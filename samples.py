@@ -16,9 +16,12 @@ import optparse
 
 def main():
     options = getOptions()
-    font = ImageFont.truetype(options.font, options.size)
-    if not options.single:
-        directory = options.file
+    run(options.font, options.size, options.single)
+
+def run(font, size, target, single=False, outdir=None):
+    font = ImageFont.truetype(font, size)
+    if not single:
+        directory = target
         if directory[-1] != '/': directory += '/'
         
         try:
@@ -27,10 +30,10 @@ def main():
             print "No list file found! Exiting..."
             sys.exit(1)
     else: 
-        words = [options.file]
+        words = [target]
         directory = "./"
 
-    for word in words:
+        if outdir: directory = outdir
         generateImage(word.strip(), directory, font)
 
 def generateImage(word,directory,font):
