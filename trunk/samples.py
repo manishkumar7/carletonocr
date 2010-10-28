@@ -33,7 +33,8 @@ def run(font, size, target, single=False, outdir=None):
         words = [target]
         directory = "./"
 
-        if outdir: directory = outdir
+    if outdir: directory = outdir
+    for word in words:
         generateImage(word.strip(), directory, font)
 
 def generateImage(word,directory,font):
