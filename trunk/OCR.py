@@ -2,10 +2,11 @@ import cv
 import sys
 
 class OCR:
-  def __init__(self, image, binarizer, segmenter, matcher, linguist):
+  def __init__(self, image, binarizer, segmenter, typesetter, matcher, linguist):
     self.image = image
     self.binarizer = binarizer
     self.segmenter = segmenter
+    self.typesetter = typesetter
     self.matcher = matcher
     self.linguist = linguist
     
@@ -15,7 +16,9 @@ class OCR:
     confidence *= binConfidence
     characterPieces, segmentConfidence = self.segmenter.segment(blackAndWhite)
     confidence *= segmentConfidence
-    output, matchConfidence = self.matcher.match(characterPieces)
+    pieces, typesetterConfidence = self.typesetter.typeset(characterPieces)
+    confidence *= typesetterConfidence
+    output, matchConfidence = self.matcher.match(pieces)
     confidence *= matchConfidence
     output, linguisticConfidence = self.linguist.correct(output)
     confidence *= linguisticConfidence
@@ -36,7 +39,7 @@ class SimpleBinarizer(Binarizer):
   def binarize(self, im):
     '''Given an image, return a black and white image, together with
     a probability that it is correct. Uses OPenCV's adaptive
-    thresholding with blockSize as large as possibe'''
+    thresholding with blockSize as large as possible'''
     #create an image that will eventually be a binarization of the input image
     thresh = cv.CreateImage((im.width, im.height), 8, 1)
     #get parameter values
@@ -67,6 +70,67 @@ class Segmenter:
     return [], 1.0
     
 class ConnectedComponentSegmenter(Segmenter):
+    
+    def segment(self, blackAndWhite):
+        pixels = set((row,col) for row in range(blackAndWhite.height) for col in range(blackAndWhite.width))
+        output = []
+        while pixels:
+            pixel = pixels.pop()
+            if blackAndWhite[pixel] == 0:
+                 output.append(self.findConnectedComponents(blackAndWhite, pixel, pixels))
+        return output, 1.0
+    
+    def findConnectedComponents(self, image, pixel, pixels):
+        points = set([pixel])
+        pointsToSearch = [pixel]
+        while pointsToSearch:
+            workListPoint = pointsToSearch.pop()
+            #print "Searching for points adjacent to %d, %d!" % workListPoint
+            wLRow, wLCol = workListPoint
+            potentialAdjacentPoints = set([(wLRow, wLCol-1), (wLRow, wLCol+1), (wLRow-1, wLCol), (wLRow+1, wLCol)]) - points
+            adjacentPoints = set()
+            for p in potentialAdjacentPoints:
+                #print p
+                tmpRow, tmpCol = p
+                if tmpRow >= 0 and tmpCol >= 0 and tmpCol < image.width and tmpRow < image.height and image[p] == 0.0:
+                    #print "Including an adjacent point!"
+                    adjacentPoints.add(p)
+            points |= adjacentPoints
+            pointsToSearch.extend(list(adjacentPoints))
+        for point in points:
+            if point in pixels:
+                pixels.remove(point)
+        boundingBox = self.boundingBox(points)
+        newImage = self.createImage(boundingBox, points)
+        return (boundingBox, newImage)
+    
+    def boundingBox(self, points):
+        minRow, minCol, maxRow, maxCol = 99999999999,99999999999,0,0
+        for point in points:
+            if point[0] < minRow:
+                minRow = point[0]
+            if point[0] > maxRow:
+                maxRow = point[0]
+        for point in points:
+            if point[1] < minCol:
+                minCol = point[1]
+            if point[1] > maxCol:
+                maxCol = point[1]
+        #(x,y,width,height)
+        return (minCol, minRow, maxCol-minCol, maxRow-minRow)
+    
+    def createImage(self, boundingBox, points):
+        newImage = cv.CreateImage((boundingBox[2], boundingBox[3]), 8, 1)
+        for row in range(boundingBox[3]):
+            for col in range(boundingBox[2]):
+                if (row+boundingBox[1], col+boundingBox[0]) in points:
+                    newImage[row,col] = 0
+                else:
+                    newImage[row,col] = 255
+        return newImage
+
+
+class BoundingBoxSegmenter(Segmenter):
 
     def segment(self, blackAndWhite):
         letters = []
@@ -84,7 +148,7 @@ class ConnectedComponentSegmenter(Segmenter):
             newImage = cv.CreateImage((letter[2], letter[3]+1), 8, 1)
             src_region = cv.GetSubRect(blackAndWhite, (letter[0], letter[1], letter[2], letter[3]+1))
             cv.Copy(src_region, newImage)
-            images.append(newImage)
+            images.append((letter, newImage))
         return images, 1.0
 
     def inBoundingBox(self, boundingBoxes, point):
@@ -125,6 +189,7 @@ class ConnectedComponentSegmenter(Segmenter):
                 minCol = point[1]
             if point[1] > maxCol:
                 maxCol = point[1]
+        #(x,y,width,height)
         return (minCol, minRow, maxCol-minCol, maxRow-minRow)
 
 class FeatureExtractor:
@@ -150,10 +215,13 @@ class Matcher:
     charConfidences = []
     output = ''
     for piece in characterPieces:
-      features = self.featureExtractor.extract(piece)
-      newChar, newConfidence = self.bestGuess(features)
-      output += newChar
-      charConfidences.append(newConfidence)
+      if isinstance(piece, str):
+        output += piece
+      else:
+        features = self.featureExtractor.extract(piece)
+        newChar, newConfidence = self.bestGuess(features)
+        output += newChar
+        charConfidences.append(newConfidence)
     outputConfidence = self.geometricMean(charConfidences)
     #output *= self._geometricMean(charConfidences)
     # I'm not entirely clear as to how the above (original) line works:
@@ -216,7 +284,7 @@ class TemplateMatcher(Matcher):
     '''Given a feature list, choose a character from the library. Assumes the library is a list'''
     sizeCutoff = 50
     pixelCutoff = 0.2
-    return self.findMatch(features, self.library, pixelCutoff)   
+    return self.findMatch(features[1], self.library, pixelCutoff)   
 
 class Linguist(object):
   #Future subclasses:
@@ -229,6 +297,79 @@ class Linguist(object):
 class FeatureExtractor(object):
 	def extract(self, input):
 		return input
+		
+
+class Typesetter(object):
+    def typeset(self, characterPieces):
+        return [character[1] for character in characterPieces]
+
+class LinearTypesetter(Typesetter):
+
+    def bestPieceBy(self, pieces, utility):
+        bestPiece = None
+        bestUtility = None
+        for piece in pieces:
+            if bestPiece == None:
+                myUtility = utility(piece)
+                if myUtility:
+                    bestPiece = piece
+                    bestUtility = myUtility
+            else:
+                myUtility = utility(piece)
+                if myUtility and myUtility < bestUtility:
+                    bestPiece = piece
+                    bestUtility = myUtility
+        if bestPiece != None:
+            pieces.remove(bestPiece)
+        return bestPiece
+
+    def findFirstPiece(self, pieces):
+        return self.bestPieceBy(pieces, lambda piece: piece[0][0]+piece[0][1])
+    
+    def findNextPiece(self, piecesLeft, currentLine):
+        minRow = 999999999
+        maxRow = 0
+        for (box, image) in currentLine[-5:]:
+            if box[1] < minRow:
+                minRow = box[1]
+            if box[1]+box[3] > maxRow:
+                maxRow = box[1]+box[3]
+        minCol = currentLine[-1][0][0]
+        def utility(piece):
+            if piece[0][0] < minCol or piece[0][1]+piece[0][3] < minRow or piece[0][1] > maxRow:
+                return False
+            else:
+                return piece[0][0]
+        return self.bestPieceBy(piecesLeft, utility)
+    
+    def isaSpaceBetween(self, char, lastChar, line):
+        averageWidth = sum(character[0][2] for character in line)/float(len(line))
+        return char[0][0]-(lastChar[0][0]+lastChar[0][2]) > averageWidth/4
+        
+    def typeset(self, characterPieces):
+        piecesLeft = set(characterPieces)
+        lines = []
+        while len(piecesLeft) != 0:
+            firstPiece = self.findFirstPiece(piecesLeft)
+            currentLine = [firstPiece]
+            while True:
+                next = self.findNextPiece(piecesLeft, currentLine)
+                if next == None: break
+                currentLine.append(next)
+            lines.append(currentLine)
+        output = []
+        for line in lines:
+            lastChar = None
+            for char in line:
+                if lastChar != None:
+                    if self.isaSpaceBetween(char, lastChar, line):
+                        output.append(' ')
+                lastChar = char
+                output.append(char[1])
+            output.append('\n')
+        for line in lines:
+            print [char[0] for char in line]
+        return output, 1.0
 		
 '''
 Example usage:
@@ -256,7 +397,8 @@ if __name__ == '__main__':
     im = cv.LoadImage(sys.argv[1], cv.CV_LOAD_IMAGE_GRAYSCALE)
     binarizer = SimpleBinarizer()
     segmenter = ConnectedComponentSegmenter()
+    typesetter = LinearTypesetter()
     matcher = TemplateMatcher(templateLibrary(), FeatureExtractor(), 30, 400)
     linguist = Linguist()
-    string, confidence = OCR(im, binarizer, segmenter, matcher, linguist).recognize()
+    string, confidence = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
     print "It says", string, "with confidence", confidence
