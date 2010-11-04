@@ -223,11 +223,6 @@ class Matcher:
         output += newChar
         charConfidences.append(newConfidence)
     outputConfidence = self.geometricMean(charConfidences)
-    #output *= self._geometricMean(charConfidences)
-    # I'm not entirely clear as to how the above (original) line works:
-    # output, a string, is multiplied by _geometricMean, a float?
-    # Might just be a typo, the main confidence is what's multiplied during the other steps
-    # Anyway, this is a minor point unrelated to the other changes.
     return output, outputConfidence
     
   def bestGuess(self, features):
@@ -284,7 +279,7 @@ class TemplateMatcher(Matcher):
     '''Given a feature list, choose a character from the library. Assumes the library is a list'''
     sizeCutoff = 50
     pixelCutoff = 0.2
-    return self.findMatch(features[1], self.library, pixelCutoff)   
+    return self.findMatch(features, self.library, pixelCutoff)   
 
 class Linguist(object):
   #Future subclasses:
@@ -365,10 +360,8 @@ class LinearTypesetter(Typesetter):
                     if self.isaSpaceBetween(char, lastChar, line):
                         output.append(' ')
                 lastChar = char
-                output.append(char[1])
+                output.append(char[1]) #OK up to here
             output.append('\n')
-        for line in lines:
-            print [char[0] for char in line]
         return output, 1.0
 		
 '''
@@ -398,7 +391,7 @@ if __name__ == '__main__':
     binarizer = SimpleBinarizer()
     segmenter = ConnectedComponentSegmenter()
     typesetter = LinearTypesetter()
-    matcher = TemplateMatcher(templateLibrary(), FeatureExtractor(), 30, 400)
+    matcher = TemplateMatcher(templateLibrary(), FeatureExtractor(), 100, 100)
     linguist = Linguist()
     string, confidence = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
     print "It says", string, "with confidence", confidence
