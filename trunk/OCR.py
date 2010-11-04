@@ -249,20 +249,32 @@ class TemplateMatcher(Matcher):
     inputLi = cv.InitLineIterator(inputIm, (0, 0), (self.width, self.height))
     templateLi = cv.InitLineIterator(templateIm, (0, 0), (self.width, self.height))
     zipped = zip(inputLi, templateLi)
+    n11 = .01
+    n00 = .01
+    n10 = .01
+    n01 = .01
     for pair in zipped:
-      if round(pair[0]) != round(pair[1]):
-        dist = dist + 1
-    return float(dist)/self.height/self.width        
+      if round(pair[0]) == 255 and round(pair[1]) == 255:
+      	n11 += 1
+      if round(pair[0]) == 255 and round(pair[1]) == 0:
+      	n10 += 1
+      if round(pair[0]) == 0 and round(pair[1]) == 255:
+      	n01 += 1
+      if round(pair[0]) == 0 and round(pair[1]) == 0:
+      	n00 += 1
+    distJ = float(n11)/(n11 + n10 + n01)
+    distY = (float(n11) * n00 - float(n10) * n01)/(float(n11) * n00 + float(n10) * n01)
+    return distJ        
     
   def findPixelMatch(self, inputIm, templateList, cutoff):
     '''Finds the best match according to 'pixelDist()' and returns it if less than the cutoff'''
     best = (templateList[0][0], self.pixelDist(inputIm, templateList[0][1]))
     for template in templateList[1:]:
       pDist = self.pixelDist(inputIm, template[1])
-      if pDist < best[1]:
+      if pDist > best[1]:
         best = (template[0], pDist)
     if best[1] < cutoff:
-      return   (best[0], 1-best[1])
+      return   (best[0], best[1])
     else:
       return None
         
@@ -278,7 +290,7 @@ class TemplateMatcher(Matcher):
   def bestGuess(self, features):
     '''Given a feature list, choose a character from the library. Assumes the library is a list'''
     sizeCutoff = 50
-    pixelCutoff = 0.2
+    pixelCutoff = 1.0
     return self.findMatch(features, self.library, pixelCutoff)   
 
 class Linguist(object):
@@ -394,4 +406,4 @@ if __name__ == '__main__':
     matcher = TemplateMatcher(templateLibrary(), FeatureExtractor(), 100, 100)
     linguist = Linguist()
     string, confidence = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
-    print "It says", string, "with confidence", confidence
+    print "It says:", string, "with confidence", confidence
