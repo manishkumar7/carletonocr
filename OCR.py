@@ -353,7 +353,7 @@ class LinearTypesetter(Typesetter):
         averageWidth = sum(character[0][2] for character in line)/float(len(line))
         return char[0][0]-(lastChar[0][0]+lastChar[0][2]) > averageWidth/4
         
-    def typeset(self, characterPieces):
+    def lines(self, characterPieces):
         piecesLeft = set(characterPieces)
         lines = []
         while len(piecesLeft) != 0:
@@ -364,6 +364,9 @@ class LinearTypesetter(Typesetter):
                 if next == None: break
                 currentLine.append(next)
             lines.append(currentLine)
+        return lines
+    
+    def spacesAndNewlines(self, lines):
         output = []
         for line in lines:
             lastChar = None
@@ -374,7 +377,50 @@ class LinearTypesetter(Typesetter):
                 lastChar = char
                 output.append(char[1]) #OK up to here
             output.append('\n')
-        return output, 1.0
+        return output
+    
+    def rangesOverlap(self, box1, box2, offset):
+        return box1[offset] < box2[offset]+box2[offset+2] and box2[offset] < box1[offset]+box1[offset+2]
+    
+    def combineImages(self, box1, image1, box2, image2):
+        outputBox = (min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[0]+box1[2], box2[0]+box2[2])-min(box1[0], box2[0]), max(box1[1]+box1[3], box2[1]+box2[3])-min(box1[1], box2[1]))
+        outputImage = cv.CreateImage((outputBox[2], outputBox[3]), 8, 1)
+        cv.Rectangle(outputImage,(0,0),(outputImage.height, outputImage.width),255,-1)
+        for box, image in [(box1, image1), (box2, image2)]:
+            offset = (box[0] - outputBox[0], box[1] - outputBox[1])
+            for row in range(image.height):
+                for col in range(image.width):
+                    print 'setting a pixel at', (row, col)
+                    outputImage[row+offset[1], col+offset[0]] = image[row,col]
+        cv.SaveImage("j.png",outputImage)
+        return outputBox, outputImage
+    
+    def combineVertical(self, line):
+        print 'doing a line'
+        accumulatedBox = None
+        accumulatedImage = None
+        newLine = []
+        for box, image in line:
+            print 'looking at a character'
+            if accumulatedBox == None:
+                accumulatedBox = box
+                accumulatedImage = image
+            else:
+                if self.rangesOverlap(accumulatedBox, box, 0) and not self.rangesOverlap(accumulatedBox, box, 1):
+                    print 'combining'
+                    accumulatedBox, accumulatedImage = self.combineImages(box, image, accumulatedBox, accumulatedImage)
+                else:
+                    print 'not combining'
+                    newLine.append((accumulatedBox, accumulatedImage))
+                    accumulatedBox = box
+                    accumulatedImage = image
+        if accumulatedBox != None:
+            newLine.append((accumulatedBox, accumulatedImage))
+        return newLine
+    
+    def typeset(self, characterPieces):
+        return self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)]), 1.0
+        #return self.spacesAndNewlines(self.lines(characterPieces)), 1.0
 		
 '''
 Example usage:
