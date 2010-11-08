@@ -1,5 +1,6 @@
 import cv
 import sys
+import os
 
 class OCR:
   def __init__(self, image, binarizer, segmenter, typesetter, matcher, linguist):
@@ -208,9 +209,28 @@ class Matcher:
   #kNN, with different distance metrics
   #Neural networks
   def __init__(self, library, featureExtractor):
-    self.library = library #library of characters; all matchers need this
+    self.library = self.createLibrary(library) #library of characters; all matchers need this
     self.featureExtractor = featureExtractor
 
+  def createLibrary(self, library):
+    dirs = os.listdir(library)
+    chars = []
+    for dir in dirs:
+        chars.extend(self.__addDirectoryContents(library+'/'+dir))
+    return chars
+    
+    
+  
+  def __addDirectoryContents(self, dir):
+    #try:
+      files = os.listdir(dir)
+      library = []
+      for file in files:
+        im = cv.LoadImage(dir + '/' + file, cv.CV_LOAD_IMAGE_GRAYSCALE)
+        library.append([file[0],im])
+      return library
+    #except IOError: return []
+  
   def match(self,characterPieces):
     charConfidences = []
     output = ''
@@ -290,8 +310,51 @@ class TemplateMatcher(Matcher):
   def bestGuess(self, features):
     '''Given a feature list, choose a character from the library. Assumes the library is a list'''
     sizeCutoff = 50
-    pixelCutoff = 1.0
+    pixelCutoff = 0.0
     return self.findMatch(features, self.library, pixelCutoff)   
+    
+class knnTemplateMatcher(TemplateMatcher):
+  def __init__(self, library, featureExtractor, width, height, k):
+    self.k = k
+    TemplateMatcher.__init__(self, library, featureExtractor, width, height)
+
+  def findPixelMatch(self, inputIm, templateList, cutoff):
+    '''Finds the best match according to 'pixelDist()' and returns it if less than the cutoff'''
+    if len(templateList) < self.k:
+      self.k = len(templateList)
+    best = []
+    for i in range(self.k):
+      best.append((self.pixelDist(inputIm, templateList[i][1]), templateList[i][0]))
+    best.sort()
+    for template in templateList[self.k:]:
+      pDist = self.pixelDist(inputIm, template[1])
+      if pDist > best[0][0]:
+        best.pop(0)
+        best.append((pDist, template[0]))
+        best.sort()
+    allBelow = True
+    voteDict = {}
+    for match in best:
+      if match[0] > cutoff:
+        allBelow = False
+        if match[1] in voteDict:
+          voteDict[match[1]] += match[0]
+        else:
+          voteDict[match[1]] = match[0]
+    cands = voteDict.keys()
+    if len(cands) == 0:
+      return ('\0', 0)
+    else:
+      max = 0
+      letter = 0
+      for cand in cands:
+        if voteDict[cand] > max:
+          max = voteDict[cand]
+          letter = cand
+      return (letter, max/self.k)
+          
+        
+        
 
 class Linguist(object):
   #Future subclasses:
@@ -432,24 +495,13 @@ linguist = NGramCorrector('/dev/null')
 text, confidence = OCR(image, binarizer, segmenter, matcher, linguist)
 '''
 
-def templateLibrary():
-    library = []
-    for i in range(65,91):
-        im = cv.LoadImage('Archive/'+str(chr(i))+'.tif', cv.CV_LOAD_IMAGE_GRAYSCALE)
-        #print str(chr(i))+'.tif'
-        library.append([chr(i),im])
-    for i in range(97,123):
-        im = cv.LoadImage('Archive/'+'l_'+str(chr(i))+'.tif', cv.CV_LOAD_IMAGE_GRAYSCALE)
-        #print str(chr(i))+'.tif'
-        library.append([chr(i),im])
-    return library
 
 if __name__ == '__main__':
     im = cv.LoadImage(sys.argv[1], cv.CV_LOAD_IMAGE_GRAYSCALE)
     binarizer = SimpleBinarizer()
     segmenter = ConnectedComponentSegmenter()
     typesetter = LinearTypesetter()
-    matcher = TemplateMatcher(templateLibrary(), FeatureExtractor(), 100, 100)
+    matcher = knnTemplateMatcher('/Accounts/courses/comps/text_recognition/all', FeatureExtractor(), 100, 100, 30)
     linguist = Linguist()
     string, confidence = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
     print "It says:", string, "with confidence", confidence
