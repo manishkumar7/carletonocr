@@ -293,7 +293,7 @@ class TemplateMatcher(Matcher):
       pDist = self.pixelDist(inputIm, template[1])
       if pDist > best[1]:
         best = (template[0], pDist)
-    if best[1] < cutoff:
+    if best[1] > cutoff:
       return   (best[0], best[1])
     else:
       return None
@@ -342,6 +342,7 @@ class knnTemplateMatcher(TemplateMatcher):
         else:
           voteDict[match[1]] = match[0]
     cands = voteDict.keys()
+    print voteDict
     if len(cands) == 0:
       return ('\0', 0)
     else:
@@ -501,7 +502,8 @@ if __name__ == '__main__':
     binarizer = SimpleBinarizer()
     segmenter = ConnectedComponentSegmenter()
     typesetter = LinearTypesetter()
-    matcher = knnTemplateMatcher('/Accounts/courses/comps/text_recognition/all', FeatureExtractor(), 100, 100, 30)
+    matcher = TemplateMatcher('/Accounts/courses/comps/text_recognition/300/all', FeatureExtractor(), 100, 100)
+    #matcher = knnTemplateMatcher('/Accounts/courses/comps/text_recognition/300/all', FeatureExtractor(), 100, 100, 1)
     linguist = Linguist()
     string, confidence = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
     print "It says:", string, "with confidence", confidence
