@@ -1,5 +1,5 @@
-FONT_DIR = "/usr/share/fonts/TTF/"
-FONT_SIZE = 32
+FONT_DIR = "/home/fivre/work/comps/Library/Fonts/"
+FONT_SIZE = 300
 TARGET_DIR = "/tmp/ocr/"
 
 import samples
@@ -10,5 +10,5 @@ for font in os.listdir(FONT_DIR):
         try:
             os.mkdir(TARGET_DIR+font[:-4])
             samples.run(FONT_DIR+font, FONT_SIZE, TARGET_DIR, outdir=TARGET_DIR+font[:-4]+'/')
-        except OSError:
+        except OSError, IOError:
             continue

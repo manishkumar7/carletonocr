@@ -10,13 +10,13 @@ properly handle them anyway, since ImageDraw seems to put garbage where it
 finds newlines.
 """
 
-import Image, ImageDraw, ImageFont
+import Image, ImageDraw, ImageFont, ImageChops
 import sys
 import optparse
 
 def main():
     options = getOptions()
-    run(options.font, options.size, options.single)
+    run(options.font, options.size, options.file, single=options.single)
 
 def run(font, size, target, single=False, outdir=None):
     font = ImageFont.truetype(font, size)
@@ -51,8 +51,12 @@ def generateImage(word,directory,font):
     draw = ImageDraw.Draw(im)
 
     draw.text((0,0), word, font=font)
+    im = trim(im, "white")
     filename = word.replace(' ','_') + '.png'
-    im.save(directory + filename)
+    try:
+    	im.save(directory + filename)
+    except KeyError:
+        print filename
 
 def getOptions():
   """
@@ -87,6 +91,18 @@ def getOptions():
   options.file = args[0]
 
   return options
+
+
+def trim(im, border):
+    bg = Image.new(im.mode, im.size, border)
+    diff = ImageChops.difference(im, bg)
+    bbox = diff.getbbox()
+    if bbox:
+        return im.crop(bbox)
+    else:
+        # found no content
+        raise ValueError("cannot trim; image was empty")
+
 
 if __name__ == "__main__":
     main()
