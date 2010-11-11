@@ -1,17 +1,17 @@
 import optparse
 import sys
 import cv
-from OCR import *
+from bop import *
 
 def main():
     options = getOptions()
 
     im = cv.LoadImage(sys.argv[1], cv.CV_LOAD_IMAGE_GRAYSCALE)
-    binarizer = SimpleBinarizer()
-    segmenter = ConnectedComponentSegmenter()
-    typesetter = LinearTypesetter()
-    matcher = knnTemplateMatcher(options.fontDir, FeatureExtractor(), options.xSize, options.ySize, options.k)
-    linguist = Linguist()
+    binarizer = binarize.SimpleBinarizer()
+    segmenter = segment.ConnectedComponentSegmenter()
+    typesetter = typeset.LinearTypesetter()
+    matcher = match.knnTemplateMatcher(options.fontDir, extract.FeatureExtractor(), options.xSize, options.ySize, options.k)
+    linguist = linguistics.Linguist()
     string = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
     print string
 
