@@ -2,73 +2,70 @@ import cv
 import sys
 import os
 
+from nltk.model.ngram import NgramModel
+from nltk.corpus import brown
+
 class OCR:
-  def __init__(self, image, binarizer, segmenter, typesetter, matcher, linguist):
-    self.image = image
-    self.binarizer = binarizer
-    self.segmenter = segmenter
-    self.typesetter = typesetter
-    self.matcher = matcher
-    self.linguist = linguist
-    
-  def recognize(self):
-    confidence = 1.0
-    blackAndWhite, binConfidence = self.binarizer.binarize(self.image)
-    confidence *= binConfidence
-    characterPieces, segmentConfidence = self.segmenter.segment(blackAndWhite)
-    confidence *= segmentConfidence
-    pieces, typesetterConfidence = self.typesetter.typeset(characterPieces)
-    confidence *= typesetterConfidence
-    output, matchConfidence = self.matcher.match(pieces)
-    confidence *= matchConfidence
-    output, linguisticConfidence = self.linguist.correct(output)
-    confidence *= linguisticConfidence
-    return output, confidence
-    
+    def __init__(self, image, binarizer, segmenter, typesetter, matcher, linguist):
+        self.image = image
+        self.binarizer = binarizer
+        self.segmenter = segmenter
+        self.typesetter = typesetter
+        self.matcher = matcher
+        self.linguist = linguist
+        
+    def recognize(self):
+        blackAndWhite = self.binarizer.binarize(self.image)
+        characterPieces = self.segmenter.segment(blackAndWhite)
+        pieces = self.typesetter.typeset(characterPieces)
+        output = self.matcher.match(pieces)
+        output = self.linguist.correct(output)
+        return output
+        
 class Binarizer:
-  #Future subclasses:
-  #Thresholding (how do we get the threshold?)
-  #Locally adaptive binarization
-  def binarize(self, image):
-    '''Given an image, return a black and white image, together with
-    a probability that this is correct'''
-    #Potential pain point in the future:
-    #What if we want to use a grayscale algorithm?
-    return image, 1.0
-    
+    #Future subclasses:
+    #Thresholding (how do we get the threshold?)
+    #Locally adaptive binarization
+    def binarize(self, image):
+        '''Given an image, return a black and white image, together with
+        a probability that this is correct'''
+        #Potential pain point in the future:
+        #What if we want to use a grayscale algorithm?
+        return image
+        
 class SimpleBinarizer(Binarizer):
-  def binarize(self, im):
-    '''Given an image, return a black and white image, together with
-    a probability that it is correct. Uses OPenCV's adaptive
-    thresholding with blockSize as large as possible'''
-    #create an image that will eventually be a binarization of the input image
-    thresh = cv.CreateImage((im.width, im.height), 8, 1)
-    #get parameter values
-    maxVal = 255
-    bSize = self.getBlockSize(im)
-    #create the binarized image
-    cv.AdaptiveThreshold(im, thresh, maxVal, blockSize=bSize)
-    return thresh, 1.0
-    
-  def getBlockSize(self, image):
-    '''Given an image, determines the blockSize argument for binarize().
-    Chooses largest possible blockSize''' 
-    blockSize = min(image.width, image.height)
-    if blockSize % 2 == 0:
-        blockSize = blockSize - 1
-    return blockSize
+    def binarize(self, im):
+        '''Given an image, return a black and white image, together with
+        a probability that it is correct. Uses OPenCV's adaptive
+        thresholding with blockSize as large as possible'''
+        #create an image that will eventually be a binarization of the input image
+        thresh = cv.CreateImage((im.width, im.height), 8, 1)
+        #get parameter values
+        maxVal = 255
+        bSize = self.getBlockSize(im)
+        #create the binarized image
+        cv.AdaptiveThreshold(im, thresh, maxVal, blockSize=bSize)
+        return thresh
+        
+    def getBlockSize(self, image):
+        '''Given an image, determines the blockSize argument for binarize().
+        Chooses largest possible blockSize''' 
+        blockSize = min(image.width, image.height)
+        if blockSize % 2 == 0:
+                blockSize = blockSize - 1
+        return blockSize
 
 class Segmenter:
-  #Future subclasses:
-  #Flood fill
-  def segment(self, blackAndWhite):
-    '''Given a black and white image, return a list of image
-    pieces which each stand for an individual character'''
-    #Potential pain point in the future:
-    #Segmentation maybe should use knowledge about characters;
-    #What do we do with overlapping characters
-    #or characters that aren't contiguous
-    return [], 1.0
+    #Future subclasses:
+    #Flood fill
+    def segment(self, blackAndWhite):
+        '''Given a black and white image, return a list of image
+        pieces which each stand for an individual character'''
+        #Potential pain point in the future:
+        #Segmentation maybe should use knowledge about characters;
+        #What do we do with overlapping characters
+        #or characters that aren't contiguous
+        return []
     
 class ConnectedComponentSegmenter(Segmenter):
     
@@ -79,7 +76,7 @@ class ConnectedComponentSegmenter(Segmenter):
             pixel = pixels.pop()
             if blackAndWhite[pixel] == 0:
                  output.append(self.findConnectedComponents(blackAndWhite, pixel, pixels))
-        return output, 1.0
+        return output
     
     def findConnectedComponents(self, image, pixel, pixels):
         points = set([pixel])
@@ -150,7 +147,7 @@ class BoundingBoxSegmenter(Segmenter):
             src_region = cv.GetSubRect(blackAndWhite, (letter[0], letter[1], letter[2], letter[3]+1))
             cv.Copy(src_region, newImage)
             images.append((letter, newImage))
-        return images, 1.0
+        return images
 
     def inBoundingBox(self, boundingBoxes, point):
         for box in boundingBoxes:
@@ -194,181 +191,207 @@ class BoundingBoxSegmenter(Segmenter):
         return (minCol, minRow, maxCol-minCol, maxRow-minRow)
 
 class FeatureExtractor:
-  #Future subclasses:
-  #dummy, normalizing (for template matching)
-  #Thinning
-  #Contours
-  #Zernike moment
-  def extractFeatures(self, imagePiece):
-    '''Given part of an image, extract its features
-    so that they're in a form suitable for matching'''
-    return None
-    
-class Matcher:
-  #Future subclasses:
-  #kNN, with different distance metrics
-  #Neural networks
-  def __init__(self, library, featureExtractor):
-    self.library = self.createLibrary(library) #library of characters; all matchers need this
-    self.featureExtractor = featureExtractor
-
-  def createLibrary(self, library):
-    dirs = os.listdir(library)
-    chars = []
-    for dir in dirs:
-        chars.extend(self.__addDirectoryContents(library+'/'+dir))
-    return chars
-    
-    
-  
-  def __addDirectoryContents(self, dir):
-    #try:
-      files = os.listdir(dir)
-      library = []
-      for file in files:
-        im = cv.LoadImage(dir + '/' + file, cv.CV_LOAD_IMAGE_GRAYSCALE)
-        library.append([file[0],im])
-      return library
-    #except IOError: return []
-  
-  def match(self,characterPieces):
-    charConfidences = []
-    output = ''
-    for piece in characterPieces:
-      if isinstance(piece, str):
-        output += piece
-      else:
-        features = self.featureExtractor.extract(piece)
-        newChar, newConfidence = self.bestGuess(features)
-        output += newChar
-        charConfidences.append(newConfidence)
-    outputConfidence = self.geometricMean(charConfidences)
-    return output, outputConfidence
-    
-  def bestGuess(self, features):
-    '''Given a feature list, choose a character from the library'''
-    return '', 1.0
-    
-  def geometricMean(self, list):
-    return reduce(lambda x, y: x*y, list)**(1.0/len(list))
-
-class TemplateMatcher(Matcher):    
-  def __init__(self, library, featureExtractor, width, height):
-    self.width = width #width that all images will be scaled to
-    self.height = height #height that all images will be scaled to
-    Matcher.__init__(self, library, featureExtractor)
-
-  def resize(self, image):
-    scaled = cv.CreateImage((self.width, self.height), 8, 1)
-    cv.Resize(image, scaled)
-    return scaled
-    
-  def pixelDist(self, inputIm, templateIm):
-    '''Determines the distance between shared pixels of 'inputIm' and 'templateIm' '''
-    dist = 0
-    inputLi = cv.InitLineIterator(inputIm, (0, 0), (self.width, self.height))
-    templateLi = cv.InitLineIterator(templateIm, (0, 0), (self.width, self.height))
-    zipped = zip(inputLi, templateLi)
-    n11 = .01
-    n00 = .01
-    n10 = .01
-    n01 = .01
-    for pair in zipped:
-      if round(pair[0]) == 255 and round(pair[1]) == 255:
-      	n11 += 1
-      if round(pair[0]) == 255 and round(pair[1]) == 0:
-      	n10 += 1
-      if round(pair[0]) == 0 and round(pair[1]) == 255:
-      	n01 += 1
-      if round(pair[0]) == 0 and round(pair[1]) == 0:
-      	n00 += 1
-    distJ = float(n11)/(n11 + n10 + n01)
-    distY = (float(n11) * n00 - float(n10) * n01)/(float(n11) * n00 + float(n10) * n01)
-    return distJ        
-    
-  def findPixelMatch(self, inputIm, templateList, cutoff):
-    '''Finds the best match according to 'pixelDist()' and returns it if less than the cutoff'''
-    best = (templateList[0][0], self.pixelDist(inputIm, templateList[0][1]))
-    for template in templateList[1:]:
-      pDist = self.pixelDist(inputIm, template[1])
-      if pDist > best[1]:
-        best = (template[0], pDist)
-    if best[1] > cutoff:
-      return   (best[0], best[1])
-    else:
-      return None
+    #Future subclasses:
+    #dummy, normalizing (for template matching)
+    #Thinning
+    #Contours
+    #Zernike moment
+    def extractFeatures(self, imagePiece):
+        '''Given part of an image, extract its features
+        so that they're in a form suitable for matching'''
+        return None
         
-  def findMatch(self, inputIm, templateList, pixelCutoff):
-    '''Finds the best match for 'inputIm' in 'templateList' and returns it if it satisfies the
-    given cutoffs'''
-    inputIm = self.resize(inputIm)
-    for i in range(len(templateList)):
-        templateList[i][1] = self.resize(templateList[i][1])
-    match = self.findPixelMatch(inputIm, templateList, pixelCutoff)
-    return match
-  
-  def bestGuess(self, features):
-    '''Given a feature list, choose a character from the library. Assumes the library is a list'''
-    sizeCutoff = 50
-    pixelCutoff = 0.0
-    return self.findMatch(features, self.library, pixelCutoff)   
+class Matcher:
+    #Future subclasses:
+    #kNN, with different distance metrics
+    #Neural networks
+    def __init__(self, library, featureExtractor):
+        self.library = self.createLibrary(library) #library of characters; all matchers need this
+        self.featureExtractor = featureExtractor
+
+    def createLibrary(self, library):
+        dirs = os.listdir(library)
+        chars = []
+        for dir in dirs:
+                chars.extend(self.__addDirectoryContents(library+'/'+dir))
+        return chars
+        
+        
+    
+    def __addDirectoryContents(self, dir):
+        #try:
+            files = os.listdir(dir)
+            library = []
+            for file in files:
+                im = cv.LoadImage(dir + '/' + file, cv.CV_LOAD_IMAGE_GRAYSCALE)
+                library.append([file[0],im])
+            return library
+        #except IOError: return []
+    
+    def match(self,characterPieces):
+        output = []
+        for piece in characterPieces:
+            if isinstance(piece, str):
+                output += piece
+            else:
+                features = self.featureExtractor.extract(piece)
+                newChar = self.bestGuess(features)
+                output.append(newChar)
+        return output
+        
+    def bestGuess(self, features):
+        '''Given a feature list, choose a character from the library'''
+        return ''
+        
+    def geometricMean(self, list):
+        return reduce(lambda x, y: x*y, list)**(1.0/len(list))
+
+class TemplateMatcher(Matcher):      
+    def __init__(self, library, featureExtractor, width, height):
+        self.width = width #width that all images will be scaled to
+        self.height = height #height that all images will be scaled to
+        Matcher.__init__(self, library, featureExtractor)
+
+    def resize(self, image):
+        scaled = cv.CreateImage((self.width, self.height), 8, 1)
+        cv.Resize(image, scaled, cv.CV_INTER_NN)
+        return scaled
+        
+    def pixelDist(self, inputIm, templateIm):
+        '''Determines the distance between shared pixels of 'inputIm' and 'templateIm' '''
+        dist = 0
+        inputLi = cv.InitLineIterator(inputIm, (0, 0), (self.width, self.height))
+        templateLi = cv.InitLineIterator(templateIm, (0, 0), (self.width, self.height))
+        zipped = zip(inputLi, templateLi)
+        n11 = .01
+        n00 = .01
+        n10 = .01
+        n01 = .01
+        for pair in zipped:
+            if round(pair[0]) == 255:
+                if round(pair[1]) == 255:
+                    n11 += 1
+                elif round(pair[1]) == 0:
+                    n10 += 1
+            elif round(pair[0]) == 0:
+                if round(pair[1]) == 255:
+                    n01 += 1
+                elif round(pair[1]) == 0:
+                    n00 += 1
+            else:
+                print "Why is there a pixel with value", pair[0]
+        distJ = float(n11)/(n11 + n10 + n01)
+        distY = (float(n11) * n00 - float(n10) * n01)/(float(n11) * n00 + float(n10) * n01)
+        return distJ                
+        
+    def findPixelMatch(self, inputIm, templateList):
+        '''Finds the best match according to 'pixelDist()' and returns it if less than the cutoff'''
+        best = (templateList[0][0], self.pixelDist(inputIm, templateList[0][1]))
+        for template in templateList[1:]:
+            pDist = self.pixelDist(inputIm, template[1])
+            if pDist > best[1]:
+                best = (template[0], pDist)
+        return [(best[0], best[1])]
+                
+    def findMatch(self, inputIm, templateList):
+        '''Finds the best match for 'inputIm' in 'templateList' and returns it if it satisfies the
+        given cutoffs'''
+        inputIm = self.resize(inputIm)
+        for template in templateList:
+                template[1] = self.resize(template[1])
+        match = self.findPixelMatch(inputIm, templateList)
+        return match
+    
+    def bestGuess(self, features):
+        '''Given a feature list, choose a character from the library. Assumes the library is a list'''
+        return self.findMatch(features, self.library)   
     
 class knnTemplateMatcher(TemplateMatcher):
-  def __init__(self, library, featureExtractor, width, height, k):
-    self.k = k
-    TemplateMatcher.__init__(self, library, featureExtractor, width, height)
+    def __init__(self, library, featureExtractor, width, height, k):
+        self.k = k
+        TemplateMatcher.__init__(self, library, featureExtractor, width, height)
 
-  def findPixelMatch(self, inputIm, templateList, cutoff):
-    '''Finds the best match according to 'pixelDist()' and returns it if less than the cutoff'''
-    if len(templateList) < self.k:
-      self.k = len(templateList)
-    best = []
-    for i in range(self.k):
-      best.append((self.pixelDist(inputIm, templateList[i][1]), templateList[i][0]))
-    best.sort()
-    for template in templateList[self.k:]:
-      pDist = self.pixelDist(inputIm, template[1])
-      if pDist > best[0][0]:
-        best.pop(0)
-        best.append((pDist, template[0]))
+    def findPixelMatch(self, inputIm, templateList):
+        '''Finds the best match according to 'pixelDist()' and returns it if less than the cutoff'''
+        k = min(len(templateList), self.k)
+        best = []
+        for i in range(k):
+            best.append((self.pixelDist(inputIm, templateList[i][1]), templateList[i][0]))
         best.sort()
-    allBelow = True
-    voteDict = {}
-    for match in best:
-      if match[0] > cutoff:
-        allBelow = False
-        if match[1] in voteDict:
-          voteDict[match[1]] += match[0]
+        for template in templateList[k:]:
+            pDist = self.pixelDist(inputIm, template[1])
+            if pDist > best[0][0]:
+                best.pop(0)
+                best.append((pDist, template[0]))
+                best.sort()
+        voteDict = {}
+        for match in best:
+                if match[1] in voteDict:
+                    voteDict[match[1]] += match[0]
+                else:
+                    voteDict[match[1]] = match[0]
+        cands = voteDict.keys()
+        #print voteDict
+        if len(cands) == 0:
+            return []
         else:
-          voteDict[match[1]] = match[0]
-    cands = voteDict.keys()
-    print voteDict
-    if len(cands) == 0:
-      return ('\0', 0)
-    else:
-      max = 0
-      letter = 0
-      for cand in cands:
-        if voteDict[cand] > max:
-          max = voteDict[cand]
-          letter = cand
-      return (letter, max/self.k)
-          
-        
-        
+            return voteDict.items()
 
 class Linguist(object):
-  #Future subclasses:
-  #n-grams (for words and for characters) -- would need library
-  #Deeper linguistic knowledge?
-  def correct(self, string):
-    '''Correct errors based on linguistic knowledge'''
-    return string, 1.0
+    #Future subclasses:
+    #n-grams (for words and for characters) -- would need library
+    #Deeper linguistic knowledge?
+    def correct(self, characterPossibilities):
+        '''Correct errors based on linguistic knowledge'''
+        output = ''
+        context = self.makeContext()
+        for item in characterPossibilities:
+            if isinstance(item, str):
+                output += item
+            else:
+                maxProbability = -99999
+                bestLetter = ''
+                for character, probability in item:
+                    realProbability = self.probability(character, probability, context)
+                    if probability > maxProbability:
+                        bestLetter = character
+                        maxProbability = probability
+                self.updateContext(context, bestLetter)
+                output += bestLetter
+        return output
+    
+    def makeContext(self):
+        return None
+    
+    def updateContext(self, context, letter):
+        pass
+    
+    def probability(self, character, oldProbability, context):
+        return oldProbability
 
+class NGramLinguist(Linguist):
+
+    def __init__(self, data, n, selfImportance):
+        self.n = n
+        self.selfImportance = selfImportance
+        self.model = NgramModel(n, list(data))
+
+    def makeContext(self):
+        return []
+    
+    def updateContext(self, context, letter):
+        context.append(letter)
+        if len(context) == self.n: #context should never get longer than that
+            context.pop(0)
+    
+    def probability(self, character, oldProbability, context):
+        modelProbability = self.model.prob(character, context)
+        return oldProbability*(1-self.selfImportance) + modelProbability*self.selfImportance
+        
 class FeatureExtractor(object):
-	def extract(self, input):
-		return input
-		
+    def extract(self, input):
+        return input
+        
 
 class Typesetter(object):
     def typeset(self, characterPieces):
@@ -454,27 +477,27 @@ class LinearTypesetter(Typesetter):
             offset = (box[0] - outputBox[0], box[1] - outputBox[1])
             for row in range(image.height):
                 for col in range(image.width):
-                    print 'setting a pixel at', (row, col)
+                    #print 'setting a pixel at', (row, col)
                     outputImage[row+offset[1], col+offset[0]] = image[row,col]
-        cv.SaveImage("j.png",outputImage)
+        #cv.SaveImage("j.png",outputImage)
         return outputBox, outputImage
     
     def combineVertical(self, line):
-        print 'doing a line'
+        #print 'doing a line'
         accumulatedBox = None
         accumulatedImage = None
         newLine = []
         for box, image in line:
-            print 'looking at a character'
+            #print 'looking at a character'
             if accumulatedBox == None:
                 accumulatedBox = box
                 accumulatedImage = image
             else:
                 if self.rangesOverlap(accumulatedBox, box, 0) and not self.rangesOverlap(accumulatedBox, box, 1):
-                    print 'combining'
+                    #print 'combining'
                     accumulatedBox, accumulatedImage = self.combineImages(box, image, accumulatedBox, accumulatedImage)
                 else:
-                    print 'not combining'
+                    #print 'not combining'
                     newLine.append((accumulatedBox, accumulatedImage))
                     accumulatedBox = box
                     accumulatedImage = image
@@ -483,9 +506,8 @@ class LinearTypesetter(Typesetter):
         return newLine
     
     def typeset(self, characterPieces):
-        return self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)]), 1.0
-        #return self.spacesAndNewlines(self.lines(characterPieces)), 1.0
-		
+        return self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)])
+        
 '''
 Example usage:
 image = cv.LoadImageImage('foo.jpg')
@@ -502,8 +524,9 @@ if __name__ == '__main__':
     binarizer = SimpleBinarizer()
     segmenter = ConnectedComponentSegmenter()
     typesetter = LinearTypesetter()
-    matcher = TemplateMatcher('/Accounts/courses/comps/text_recognition/300/all', FeatureExtractor(), 100, 100)
-    #matcher = knnTemplateMatcher('/Accounts/courses/comps/text_recognition/300/all', FeatureExtractor(), 100, 100, 1)
+    #matcher = TemplateMatcher('/Accounts/courses/comps/text_recognition/300/all', FeatureExtractor(), 100, 100)
+    matcher = knnTemplateMatcher('/Accounts/courses/comps/text_recognition/300/all', FeatureExtractor(), 100, 100, 1)
     linguist = Linguist()
-    string, confidence = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
-    print "It says:", string, "with confidence", confidence
+    #linguist = NGramLinguist(''.join(brown.words()), 3, .3)
+    string = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
+    print string
