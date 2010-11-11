@@ -190,43 +190,27 @@ class BoundingBoxSegmenter(Segmenter):
         #(x,y,width,height)
         return (minCol, minRow, maxCol-minCol, maxRow-minRow)
 
-class FeatureExtractor:
-    #Future subclasses:
-    #dummy, normalizing (for template matching)
-    #Thinning
-    #Contours
-    #Zernike moment
-    def extractFeatures(self, imagePiece):
-        '''Given part of an image, extract its features
-        so that they're in a form suitable for matching'''
-        return None
-        
+def buildLibrary(path, scaler, featureExtractor):
+    dirs = os.listdir(path)
+    chars = []
+    for dir in dirs:
+    	place = path+os.sep+dir
+        files = os.listdir(place)
+        library = []
+        for file in files:
+            im = cv.LoadImage(place + os.sep + file, cv.CV_LOAD_IMAGE_GRAYSCALE)
+            library.append([file[0],featureExtractor.extract(scaler.scale(im))])
+        chars.extend(library)
+    return chars
+
 class Matcher:
     #Future subclasses:
     #kNN, with different distance metrics
     #Neural networks
-    def __init__(self, library, featureExtractor):
-        self.library = self.createLibrary(library) #library of characters; all matchers need this
+    def __init__(self, library, scaler, featureExtractor):
+        self.library = library
         self.featureExtractor = featureExtractor
-
-    def createLibrary(self, library):
-        dirs = os.listdir(library)
-        chars = []
-        for dir in dirs:
-                chars.extend(self.__addDirectoryContents(library+'/'+dir))
-        return chars
-        
-        
-    
-    def __addDirectoryContents(self, dir):
-        #try:
-            files = os.listdir(dir)
-            library = []
-            for file in files:
-                im = cv.LoadImage(dir + '/' + file, cv.CV_LOAD_IMAGE_GRAYSCALE)
-                library.append([file[0],im])
-            return library
-        #except IOError: return []
+        self.scaler = scaler
     
     def match(self,characterPieces):
         output = []
@@ -234,109 +218,68 @@ class Matcher:
             if isinstance(piece, str):
                 output += piece
             else:
-                features = self.featureExtractor.extract(piece)
+                scaled = self.scaler.scale(piece)
+                features = self.featureExtractor.extract(scaled)
                 newChar = self.bestGuess(features)
                 output.append(newChar)
         return output
         
     def bestGuess(self, features):
-        '''Given a feature list, choose a character from the library'''
-        return ''
-        
-    def geometricMean(self, list):
-        return reduce(lambda x, y: x*y, list)**(1.0/len(list))
-
-class TemplateMatcher(Matcher):      
-    def __init__(self, library, featureExtractor, width, height):
-        self.width = width #width that all images will be scaled to
-        self.height = height #height that all images will be scaled to
-        Matcher.__init__(self, library, featureExtractor)
-
-    def resize(self, image):
-        scaled = cv.CreateImage((self.width, self.height), 8, 1)
-        cv.Resize(image, scaled, cv.CV_INTER_NN)
-        return scaled
-        
-    def pixelDist(self, inputIm, templateIm):
-        '''Determines the distance between shared pixels of 'inputIm' and 'templateIm' '''
-        dist = 0
-        inputLi = cv.InitLineIterator(inputIm, (0, 0), (self.width, self.height))
-        templateLi = cv.InitLineIterator(templateIm, (0, 0), (self.width, self.height))
-        zipped = zip(inputLi, templateLi)
-        n11 = .01
-        n00 = .01
-        n10 = .01
-        n01 = .01
-        for pair in zipped:
-            if round(pair[0]) == 255:
-                if round(pair[1]) == 255:
-                    n11 += 1
-                elif round(pair[1]) == 0:
-                    n10 += 1
-            elif round(pair[0]) == 0:
-                if round(pair[1]) == 255:
-                    n01 += 1
-                elif round(pair[1]) == 0:
-                    n00 += 1
-            else:
-                print "Why is there a pixel with value", pair[0]
-        distJ = float(n11)/(n11 + n10 + n01)
-        distY = (float(n11) * n00 - float(n10) * n01)/(float(n11) * n00 + float(n10) * n01)
-        return distJ                
-        
-    def findPixelMatch(self, inputIm, templateList):
-        '''Finds the best match according to 'pixelDist()' and returns it if less than the cutoff'''
-        best = (templateList[0][0], self.pixelDist(inputIm, templateList[0][1]))
-        for template in templateList[1:]:
-            pDist = self.pixelDist(inputIm, template[1])
+        '''Finds the best match for 'inputIm' in the library and returns it if it satisfies the
+        given cutoffs'''
+        best = (self.library[0][0], features.similarity(self.library[0][1]))
+        for template in self.library[1:]:
+            pDist = features.similarity(template[1])
             if pDist > best[1]:
                 best = (template[0], pDist)
         return [(best[0], best[1])]
-                
-    def findMatch(self, inputIm, templateList):
-        '''Finds the best match for 'inputIm' in 'templateList' and returns it if it satisfies the
-        given cutoffs'''
-        inputIm = self.resize(inputIm)
-        for template in templateList:
-                template[1] = self.resize(template[1])
-        match = self.findPixelMatch(inputIm, templateList)
-        return match
     
-    def bestGuess(self, features):
-        '''Given a feature list, choose a character from the library. Assumes the library is a list'''
-        return self.findMatch(features, self.library)   
-    
-class knnTemplateMatcher(TemplateMatcher):
-    def __init__(self, library, featureExtractor, width, height, k):
+class knnMatcher(Matcher):
+    def __init__(self, library, scaler, featureExtractor, k):
         self.k = k
-        TemplateMatcher.__init__(self, library, featureExtractor, width, height)
+        Matcher.__init__(self, library, scaler, featureExtractor)
 
-    def findPixelMatch(self, inputIm, templateList):
+    def bestGuess(self, inputIm):
         '''Finds the best match according to 'pixelDist()' and returns it if less than the cutoff'''
-        k = min(len(templateList), self.k)
+        k = min(len(self.library), self.k)
         best = []
-        for i in range(k):
-            best.append((self.pixelDist(inputIm, templateList[i][1]), templateList[i][0]))
+        for template in self.library[:k]:
+            best.append((inputIm.similarity(template[1]), template[0]))
         best.sort()
-        for template in templateList[k:]:
-            pDist = self.pixelDist(inputIm, template[1])
+        for template in self.library[k:]:
+            pDist = inputIm.similarity(template[1])
             if pDist > best[0][0]:
                 best.pop(0)
                 best.append((pDist, template[0]))
                 best.sort()
         voteDict = {}
         for match in best:
-                if match[1] in voteDict:
-                    voteDict[match[1]] += match[0]
-                else:
-                    voteDict[match[1]] = match[0]
-        cands = voteDict.keys()
-        #print voteDict
-        if len(cands) == 0:
-            return []
-        else:
-            return voteDict.items()
+            if match[1] in voteDict:
+                voteDict[match[1]] += match[0]
+            else:
+                voteDict[match[1]] = match[0]
+        return voteDict.items()
 
+class Scaler(object):
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+    def scale(self, image):
+        scaled = cv.CreateImage((self.width, self.height), 8, 1)
+        cv.Resize(image, scaled, cv.CV_INTER_NN)
+        return scaled
+'''
+class ProportionalScaler(Scaler):
+    def __init__(self, width, height):
+        Scaler.__init__(self, width, height)
+    def scale(self, image):
+        scaled = cv.CreateImage((self.width, self.height), 8, 1)
+        if float(image.width)/image.height > float(self.width)/self.height:
+            
+        else:
+            ...
+        return scaled
+'''     
 class Linguist(object):
     #Future subclasses:
     #n-grams (for words and for characters) -- would need library
@@ -385,13 +328,58 @@ class NGramLinguist(Linguist):
             context.pop(0)
     
     def probability(self, character, oldProbability, context):
-        modelProbability = self.model.prob(character, context)
+    	try:
+        	modelProbability = self.model.prob(character, context)
+        except ZeroDivisionError:
+        	modelProbability = 0
         return oldProbability*(1-self.selfImportance) + modelProbability*self.selfImportance
         
+class Features(object):
+    def similarity(self, other):
+        return 0
+
+class TemplateImage(Features):
+    def __init__(self, image):
+        self.image = image
+    def similarity(self, other):
+        '''Determines the distance between shared pixels of self.image and other.image '''
+        inputIm = self.image
+        templateIm = other.image
+        dist = 0
+        assert inputIm.width == templateIm.width and inputIm.height == templateIm.height
+        size = (inputIm.width, inputIm.height)
+        inputLi = cv.InitLineIterator(inputIm, (0, 0), size)
+        templateLi = cv.InitLineIterator(templateIm, (0, 0), size)
+        zipped = zip(inputLi, templateLi)
+        n11 = .01
+        n00 = .01
+        n10 = .01
+        n01 = .01
+        for pair in zipped:
+            if round(pair[0]) == 255:
+                if round(pair[1]) == 255:
+                    n11 += 1
+                elif round(pair[1]) == 0:
+                    n10 += 1
+            elif round(pair[0]) == 0:
+                if round(pair[1]) == 255:
+                    n01 += 1
+                elif round(pair[1]) == 0:
+                    n00 += 1
+            else:
+                raise Exception("Why is there a pixel with value " + str(pair[0]))
+        distJ = float(n11)/(n11 + n10 + n01)
+        distY = (float(n11) * n00 - float(n10) * n01)/(float(n11) * n00 + float(n10) * n01)
+        return distJ
+
 class FeatureExtractor(object):
     def extract(self, input):
-        return input
-        
+        '''Returns a features object, with a similarity method'''
+        return Features()
+
+class TemplateComparison(FeatureExtractor):
+    def extract(self, image):
+        return TemplateImage(image)
 
 class Typesetter(object):
     def typeset(self, characterPieces):
@@ -507,26 +495,18 @@ class LinearTypesetter(Typesetter):
     
     def typeset(self, characterPieces):
         return self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)])
-        
-'''
-Example usage:
-image = cv.LoadImageImage('foo.jpg')
-binarizer = AdaptiveBinarization()
-segmenter = FloodSegmenter()
-matcher = KNN(5, CharacterLibrary('/dev/urandom', ContourFeatures())
-linguist = NGramCorrector('/dev/null')
-text, confidence = OCR(image, binarizer, segmenter, matcher, linguist)
-'''
-
 
 if __name__ == '__main__':
     im = cv.LoadImage(sys.argv[1], cv.CV_LOAD_IMAGE_GRAYSCALE)
     binarizer = SimpleBinarizer()
     segmenter = ConnectedComponentSegmenter()
     typesetter = LinearTypesetter()
-    #matcher = TemplateMatcher('/Accounts/courses/comps/text_recognition/300/all', FeatureExtractor(), 100, 100)
-    matcher = knnTemplateMatcher('/Accounts/courses/comps/text_recognition/300/all', FeatureExtractor(), 100, 100, 1)
+    featureExtractor = TemplateComparison()
+    scaler = Scaler(100, 100)
+    library = buildLibrary('/Accounts/courses/comps/text_recognition/300/all', scaler, featureExtractor)
+    matcher = knnMatcher(library, scaler, featureExtractor, 5)
+    #matcher = Matcher(library, scaler, featureExtractor)
     linguist = Linguist()
-    #linguist = NGramLinguist(''.join(brown.words()), 3, .3)
+    #linguist = NGramLinguist(''.join(brown.words()[1000:]), 3, .3)
     string = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
     print string
