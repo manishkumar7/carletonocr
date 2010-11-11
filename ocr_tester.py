@@ -10,8 +10,12 @@ def main():
     binarizer = binarize.SimpleBinarizer()
     segmenter = segment.ConnectedComponentSegmenter()
     typesetter = typeset.LinearTypesetter()
-    matcher = match.knnTemplateMatcher(options.fontDir, extract.FeatureExtractor(), options.xSize, options.ySize, options.k)
+    featureExtractor = extract.TemplateComparison()
+    scaler = extract.Scaler(options.xSize, options.ySize)
+    library = extract.buildLibrary(options.library, scaler, featureExtractor)
+    matcher = match.knnMatcher(library, scaler, featureExtractor, 5)
     linguist = linguistics.Linguist()
+    #linguist = NGramLinguist(''.join(brown.words()[1000:]), 3, .3)
     string = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
     print string
 
@@ -23,7 +27,7 @@ def getOptions():
 
     parser = optparse.OptionParser()
 
-    parser.add_option("-f", "--font-dir", action="store", dest="fontDir",
+    parser.add_option("-l", "--library-dir", action="store", dest="library",
             default="/Accounts/courses/comps/text_recognition/300/all/",
             help="Library directory for the Matcher. This should be a directory containing subdirectories, within which are PNG files named for the character they represent. allfont.py in util can generate these on machines with freetype and PIL.")
 
