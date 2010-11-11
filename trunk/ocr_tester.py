@@ -24,11 +24,8 @@ def getOptions():
     parser = optparse.OptionParser()
 
     parser.add_option("-f", "--font-dir", action="store", dest="fontDir",
-            default="/Accounts/courses/comps/text_recognition/300/all/"
-            help="Library directory for the Matcher. This should be \
-                  a directory containing subdirectories, within which are \
-                  PNG files named for the character they represent. \
-                  allfont.py in util can generate these on machines with freetype and PIL.")
+            default="/Accounts/courses/comps/text_recognition/300/all/",
+            help="Library directory for the Matcher. This should be a directory containing subdirectories, within which are PNG files named for the character they represent. allfont.py in util can generate these on machines with freetype and PIL.")
 
     parser.add_option("-x", action="store", type="int", dest="xSize", default=100,
             help="x-dimension of scaled image within the matcher")
@@ -37,7 +34,7 @@ def getOptions():
             help="y-dimension of scaled image within the matcher")
 
     parser.add_option("-k", action="store", type="int", dest="k", default=20,
-            help="k for use in the k-Nearest Neighbors matcher. k=1 is equivalent to the old template matcher."
+            help="k for use in the k-Nearest Neighbors matcher. k=1 is equivalent to the old template matcher.")
 
     (options, args) = parser.parse_args()
 
