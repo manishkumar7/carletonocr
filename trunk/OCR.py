@@ -268,18 +268,26 @@ class Scaler(object):
         scaled = cv.CreateImage((self.width, self.height), 8, 1)
         cv.Resize(image, scaled, cv.CV_INTER_NN)
         return scaled
-'''
+
 class ProportionalScaler(Scaler):
-    def __init__(self, width, height):
-        Scaler.__init__(self, width, height)
+    def __init__(self, dimension):
+        Scaler.__init__(self, dimension, dimension)
     def scale(self, image):
         scaled = cv.CreateImage((self.width, self.height), 8, 1)
-        if float(image.width)/image.height > float(self.width)/self.height:
-            
+        if image.width > image.height:
+            factor = float(self.width) / image.width
+            targetWidth = self.width
+            targetHeight = image.height*factor
         else:
-            ...
+            factor = float(self.height) / image.height
+            targetWidth = image.width*factor
+            targetHeight = self.height
+        matrix = cv.CreateMat(2, 3, cv.CV_64FC1)
+        cv.GetAffineTransform([(0, 0), (image.height, 0), (0, image.width)], [(0, 0), (targetHeight, 0), (0, targetWidth)], matrix)
+        #print "The transform is", matrix
+        cv.WarpAffine(image, scaled, matrix, fillval=255)
         return scaled
-'''     
+        
 class Linguist(object):
     #Future subclasses:
     #n-grams (for words and for characters) -- would need library
@@ -366,10 +374,9 @@ class TemplateImage(Features):
                     n01 += 1
                 elif round(pair[1]) == 0:
                     n00 += 1
-            else:
-                raise Exception("Why is there a pixel with value " + str(pair[0]))
+            #else:
+                #raise Exception("Why is there a pixel with value " + str(pair[0]))
         distJ = float(n11)/(n11 + n10 + n01)
-        distY = (float(n11) * n00 - float(n10) * n01)/(float(n11) * n00 + float(n10) * n01)
         return distJ
 
 class FeatureExtractor(object):
@@ -502,9 +509,9 @@ if __name__ == '__main__':
     segmenter = ConnectedComponentSegmenter()
     typesetter = LinearTypesetter()
     featureExtractor = TemplateComparison()
-    scaler = Scaler(100, 100)
+    scaler = ProportionalScaler(100)
     library = buildLibrary('/Accounts/courses/comps/text_recognition/300/all', scaler, featureExtractor)
-    matcher = knnMatcher(library, scaler, featureExtractor, 5)
+    matcher = knnMatcher(library, scaler, featureExtractor, 1)
     #matcher = Matcher(library, scaler, featureExtractor)
     linguist = Linguist()
     #linguist = NGramLinguist(''.join(brown.words()[1000:]), 3, .3)
