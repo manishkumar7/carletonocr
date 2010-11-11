@@ -11,7 +11,7 @@ def main():
     segmenter = segment.ConnectedComponentSegmenter()
     typesetter = typeset.LinearTypesetter()
     featureExtractor = extract.TemplateComparison()
-    scaler = extract.Scaler(options.xSize, options.ySize)
+    scaler = extract.ProportionalScaler(options.xSize)
     library = extract.buildLibrary(options.library, scaler, featureExtractor)
     matcher = match.knnMatcher(library, scaler, featureExtractor, 5)
     linguist = linguistics.Linguist()
