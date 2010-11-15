@@ -71,7 +71,7 @@ class LinearTypesetter(Typesetter):
                 lastChar = char
                 output.append(char[1]) #OK up to here
             output.append('\n')
-        return output
+        return output[:-1]
     
     def rangesOverlap(self, box1, box2, offset):
         return box1[offset] < box2[offset]+box2[offset+2] and box2[offset] < box1[offset]+box1[offset+2]

@@ -2,20 +2,20 @@ import optparse
 import sys
 import cv
 from bop import *
+from nltk.corpus import brown
 
 def main():
     options = getOptions()
 
-    im = cv.LoadImage(sys.argv[1], cv.CV_LOAD_IMAGE_GRAYSCALE)
-    binarizer = binarize.SimpleBinarizer()
-    segmenter = segment.ConnectedComponentSegmenter()
-    typesetter = typeset.LinearTypesetter()
-    featureExtractor = extract.TemplateComparison()
-    scaler = extract.ProportionalScaler(options.xSize)
+    im = cv.LoadImage(options.target, cv.CV_LOAD_IMAGE_GRAYSCALE)
+    binarizer = options.binarizer()
+    segmenter = options.segmenter()
+    typesetter = options.typesetter()
+    featureExtractor = options.featureExtractor()
+    scaler = options.scaler(options.dimension)
     library = extract.buildLibrary(options.library, scaler, featureExtractor)
-    matcher = match.knnMatcher(library, scaler, featureExtractor, 5)
-    linguist = linguistics.Linguist()
-    #linguist = NGramLinguist(''.join(brown.words()[1000:]), 3, .3)
+    matcher = match.knnMatcher(library, scaler, featureExtractor, options.k)
+    linguist = options.linguist()
     string = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
     print string
 
@@ -31,26 +31,54 @@ def getOptions():
             default="/Accounts/courses/comps/text_recognition/300/all/",
             help="Library directory for the Matcher. This should be a directory containing subdirectories, within which are PNG files named for the character they represent. allfont.py in util can generate these on machines with freetype and PIL.")
 
-    parser.add_option("-x", action="store", type="int", dest="xSize", default=100,
-            help="x-dimension of scaled image within the matcher")
+    parser.add_option("-d", "--dimension", action="store", type="int", dest="dimension", default=100,
+            help="Dimension of square scaled image within the template matcher")
 
-    parser.add_option("-y", action="store", type="int", dest="ySize", default=100,
-            help="y-dimension of scaled image within the matcher")
+    parser.add_option("-k", action="store", type="int", dest="k", default=1,
+            help="How many templates should vote on which character is chosen. k=1 means the single most similar template determines the character.")
 
-    parser.add_option("-k", action="store", type="int", dest="k", default=20,
-            help="k for use in the k-Nearest Neighbors matcher. k=1 is equivalent to the old template matcher.")
+    parser.add_option("--binarizer", action="store", dest="binarizer", default="simple",
+            help="Binarizer policy. Options: simple")
+
+    parser.add_option("--segmenter", action="store", dest="segmenter", default="connected-component",
+            help="Segmentation policy. Options: connected-component, bounding-box. Default: connected-component")
+
+    parser.add_option("--typesetter", action="store", dest="typesetter", default="linear",
+            help="Typesetting policy. Options: linear, null. Default: linear")
+
+    parser.add_option("--feature-extractor", action="store", dest="featureExtractor", default="template",
+            help="Feature extraction policy. Options: template")
+
+    parser.add_option("--scaler", action="store", dest="scaler", default="proportional",
+            help="Scaling policy. Options: simple, proportional. Default: proportional")
+
+    parser.add_option("--linguist", action="store", dest="linguist", default="null",
+            help="Linguistic correction policy. Options: null, n-gram. Default: null")
 
     (options, args) = parser.parse_args()
 
-    # Sanity checks
+    # Assure the right number of positional arguments
     if not args:
 	parser.error("Requires an image to process.")
     if len(args) > 1:
 	parser.error("Multiple images specified. Please specify only one.")
-        sys.exit(1)
 
-    # Because I really have no reason to return the single-item args by itself
     options.target = args[0]
+
+    classMap = {
+        'binarizer': {'simple': binarize.SimpleBinarizer},
+        'segmenter': {'connected-component': segment.ConnectedComponentSegmenter, 'bounding-box': segment.BoundingBoxSegmenter},
+        'typesetter': {'null': typeset.Typesetter, 'linear': typeset.LinearTypesetter},
+        'featureExtractor': {'template': extract.TemplateComparison},
+        'scaler': {'proportional': extract.ProportionalScaler, 'simple': extract.Scaler},
+        'linguist': {'null': linguistics.Linguist, 'n-gram': lambda: NGramLinguist(''.join(brown.words()[:1000]), 3, .3)}
+    }
+    for option, possibilities in classMap.items():
+        value = getattr(options, option)
+        if value in possibilities:
+            setattr(options, option, possibilities[value])
+        else:
+            parser.error("Bad option for %s: %s" % (option, value))
 
     return options
 
