@@ -89,3 +89,40 @@ class TemplateImage(Features):
 class TemplateComparison(FeatureExtractor):
     def extract(self, image):
         return TemplateImage(image)
+
+class ImageTranspose(object):
+    def __init__(self, image):
+        self.image = image
+        self.width = image.width
+        self.height = image.height
+    def __getitem__(self, index):
+        return self.image[index[1], index[0]]
+
+def VerticalHistogram(image):
+    return HorizontalHistogram(ImageTranspose(image))
+
+class HorizontalHistogram(Features):
+    def __init__(self, image):
+        self.histogram = [sum(image[row, col] for col in range(image.width)) for row in range(image.height)]
+    def similarity(self, other):
+        return -sum(abs(mine-yours) for (mine, yours) in zip(self.histogram, other.histogram))
+
+class VerticalAndHorizontalHistogram(Features):
+    def __init__(self, image):
+        self.verticalHistogram = VerticalHistogram(image)
+        self.horizontalHistogram = HorizontalHistogram(image)
+    def similarity(self, other):
+        return self.verticalHistogram.similarity(other.verticalHistogram) \
+            + self.horizontalHistogram.similarity(other.horizontalHistogram)
+
+class HistogramComparison(FeatureExtractor):
+    def extract(self, image):
+        return VerticalAndHorizontalHistogram(image)
+
+class VerticalHistogramComparison(FeatureExtractor):
+    def extract(self, image):
+        return VerticalHistogram(image)
+
+class HorizontalHistogramComparison(FeatureExtractor):
+    def extract(self, image):
+        return HorizontalHistogram(image)
