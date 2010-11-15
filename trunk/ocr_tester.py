@@ -25,7 +25,7 @@ def getOptions():
     Returns a parser object.
     """
 
-    parser = optparse.OptionParser()
+    parser = optparse.OptionParser(usage="usage: %prog [options] image", version="%prog 0.1")
 
     parser.add_option("-l", "--library-dir", action="store", dest="library",
             default="/Accounts/courses/comps/text_recognition/300/all/",
@@ -44,10 +44,9 @@ def getOptions():
 
     # Sanity checks
     if not args:
-        print "No target image specified. Nothing to do."
-        sys.exit(1)
+	parser.error("Requires an image to process.")
     if len(args) > 1:
-        print "Multiple images specified or garbled input. Please specify only one file."
+	parser.error("Multiple images specified. Please specify only one.")
         sys.exit(1)
 
     # Because I really have no reason to return the single-item args by itself
