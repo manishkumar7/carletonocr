@@ -103,9 +103,9 @@ def VerticalHistogram(image):
 
 class HorizontalHistogram(Features):
     def __init__(self, image):
-        self.histogram = [sum(image[row, col] for col in range(image.width)) for row in range(image.height)]
+        self.histogram = [sum(((image[row, col] == 0 and 1) or 0) for col in range(image.width)) for row in range(image.height)]
     def similarity(self, other):
-        return -sum(abs(mine-yours) for (mine, yours) in zip(self.histogram, other.histogram))
+        return 1.0/sum(abs(mine-yours) for (mine, yours) in zip(self.histogram, other.histogram))
 
 class VerticalAndHorizontalHistogram(Features):
     def __init__(self, image):
