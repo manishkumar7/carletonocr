@@ -89,7 +89,10 @@ def getOptions():
             'horizontal-histogram': extract.HorizontalHistogramComparison
          },
         'scaler': {'proportional': extract.ProportionalScaler, 'simple': extract.Scaler},
-        'linguist': {'null': linguistics.Linguist, 'n-gram': lambda: NGramLinguist(''.join(brown.words()[:1000]), 3, .3)}
+        'linguist': {
+            'null': linguistics.Linguist,
+            'n-gram': lambda: linguistics.NGramLinguist(''.join(brown.words()[:1000]), 3, .3)
+        }
     }
     for option, possibilities in classMap.items():
         value = getattr(options, option)
