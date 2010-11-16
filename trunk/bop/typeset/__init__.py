@@ -79,32 +79,29 @@ class LinearTypesetter(Typesetter):
     def combineImages(self, box1, image1, box2, image2):
         outputBox = (min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[0]+box1[2], box2[0]+box2[2])-min(box1[0], box2[0]), max(box1[1]+box1[3], box2[1]+box2[3])-min(box1[1], box2[1]))
         outputImage = cv.CreateImage((outputBox[2], outputBox[3]), 8, 1)
-        cv.Rectangle(outputImage,(0,0),(outputImage.height, outputImage.width),255,-1)
+        #cv.Rectangle(outputImage,(0,0),(outputImage.height, outputImage.width),255, cv.CV_FILLED)
+        for i in range(outputImage.height):
+            for j in range(outputImage.width):
+                outputImage[i, j] = 255
         for box, image in [(box1, image1), (box2, image2)]:
             offset = (box[0] - outputBox[0], box[1] - outputBox[1])
             for row in range(image.height):
                 for col in range(image.width):
-                    #print 'setting a pixel at', (row, col)
                     outputImage[row+offset[1], col+offset[0]] = image[row,col]
-        #cv.SaveImage("j.png",outputImage)
         return outputBox, outputImage
     
     def combineVertical(self, line):
-        #print 'doing a line'
         accumulatedBox = None
         accumulatedImage = None
         newLine = []
         for box, image in line:
-            #print 'looking at a character'
             if accumulatedBox == None:
                 accumulatedBox = box
                 accumulatedImage = image
             else:
                 if self.rangesOverlap(accumulatedBox, box, 0) and not self.rangesOverlap(accumulatedBox, box, 1):
-                    #print 'combining'
                     accumulatedBox, accumulatedImage = self.combineImages(box, image, accumulatedBox, accumulatedImage)
                 else:
-                    #print 'not combining'
                     newLine.append((accumulatedBox, accumulatedImage))
                     accumulatedBox = box
                     accumulatedImage = image
