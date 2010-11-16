@@ -49,5 +49,8 @@ class NGramLinguist(Linguist):
             context.pop(0)
     
     def probability(self, character, oldProbability, context):
-        modelProbability = self.model.prob(character, context)
+        try:
+            modelProbability = self.model.prob(character, context)
+        except ZeroDivisionError:
+            modelProbability = 0
         return oldProbability*(1-self.selfImportance) + modelProbability*self.selfImportance
