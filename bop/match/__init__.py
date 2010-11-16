@@ -1,9 +1,7 @@
 import cv
+import heapq
 
 class Matcher:
-    #Future subclasses:
-    #kNN, with different distance metrics
-    #Neural networks
     def __init__(self, library, scaler, featureExtractor):
         self.library = library
         self.featureExtractor = featureExtractor
@@ -22,14 +20,13 @@ class Matcher:
         return output
         
     def bestGuess(self, features):
-        '''Finds the best match for 'inputIm' in the library and returns it if it satisfies the
-        given cutoffs'''
+        '''Finds the best match for 'inputIm' in the library and returns it'''
         best = (self.library[0][0], features.similarity(self.library[0][1]))
         for template in self.library[1:]:
             pDist = features.similarity(template[1])
             if pDist > best[1]:
                 best = (template[0], pDist)
-        return [(best[0], best[1])]
+        return [best]
     
 class knnMatcher(Matcher):
     def __init__(self, library, scaler, featureExtractor, k):
@@ -37,22 +34,18 @@ class knnMatcher(Matcher):
         Matcher.__init__(self, library, scaler, featureExtractor)
 
     def bestGuess(self, inputIm):
-        '''Finds the best match according to 'pixelDist()' and returns it if less than the cutoff'''
-        k = min(len(self.library), self.k)
+        '''Finds the best match according to '.similarity()' and returns it'''
         best = []
-        for template in self.library[:k]:
-            best.append((inputIm.similarity(template[1]), template[0]))
-        best.sort()
-        for template in self.library[k:]:
-            pDist = inputIm.similarity(template[1])
-            if pDist > best[0][0]:
-                best.pop(0)
-                best.append((pDist, template[0]))
-                best.sort()
+        for character, features in self.library[:self.k]:
+            heapq.heappush(best, (inputIm.similarity(features), character))
+        for character, features in self.library[self.k:]:
+            similarity = inputIm.similarity(features)
+            if similarity > best[0][0]:
+                heapq.heappop(best)
+                heapq.heappush(best, (similarity, character))
         voteDict = {}
-        for match in best:
-            if match[1] in voteDict:
-                voteDict[match[1]] += match[0]
-            else:
-                voteDict[match[1]] = match[0]
+        for similarity, character in best:
+            voteDict[character] = voteDict.get(character, 0) + similarity
         return voteDict.items()
+
+#A neural network matcher might also be nice
