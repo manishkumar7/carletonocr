@@ -14,9 +14,10 @@ def main():
     featureExtractor = options.featureExtractor()
     scaler = options.scaler(options.dimension)
     library = extract.buildLibrary(options.library, scaler, featureExtractor)
-    matcher = match.knnMatcher(library, scaler, featureExtractor, options.k)
     linguist = options.linguist()
-    string = OCR(im, binarizer, segmenter, typesetter, matcher, linguist).recognize()
+    matcher = match.knnMatcher(library, scaler, featureExtractor, options.k)
+    recognizer = OCR(im, binarizer, segmenter, typesetter, matcher, linguist)
+    string = recognizer.recognize(options.saveBinarized, options.saveSegmented, options.saveTypeset, options.saveMatcher)
     print string
 
 def getOptions():
@@ -55,6 +56,18 @@ def getOptions():
     parser.add_option("--linguist", action="store", dest="linguist", default="null",
             help="Linguistic correction policy. Options: null, n-gram. Default: null")
 
+    parser.add_option("--save-binarized", action="store", dest="saveBinarized", default=None,
+            help="Set this to a path to save the binarized image to a particular location")
+
+    parser.add_option("--save-segmented", action="store", dest="saveSegmented", default=None,
+            help="Set this to a directory to save the segmented images in")
+
+    parser.add_option("--save-typeset", action="store", dest="saveTypeset", default=None,
+            help="Set this to a directory to save the output of the typesetter")
+
+    parser.add_option("--save-matcher", action="store", dest="saveMatcher", default=None,
+            help="Set this to a path to save the matcher's results as")
+
     (options, args) = parser.parse_args()
 
     # Assure the right number of positional arguments
@@ -83,7 +96,7 @@ def getOptions():
         if value in possibilities:
             setattr(options, option, possibilities[value])
         else:
-            parser.error("Bad option for %s: %s" % (option, value))
+            parser.error("Bad option for %s: %s.\nAdmissible values: %s." % (option, value, ', '.join(possibilities)))
 
     return options
 
