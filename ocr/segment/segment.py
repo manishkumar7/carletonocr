@@ -134,3 +134,4 @@ class BoundingBoxSegmenter(Segmenter):
                 maxCol = point[1]
         #(x,y,width,height)
         return (minCol, minRow, maxCol-minCol, maxRow-minRow)
+

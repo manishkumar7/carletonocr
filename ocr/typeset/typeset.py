@@ -1,10 +1,15 @@
 import cv
 
 class Typesetter(object):
+    def __init__(self, spaceWidth):
+        self.spaceWidth = spaceWidth
     def typeset(self, characterPieces):
         return [character[1] for character in characterPieces]
 
 class LinearTypesetter(Typesetter):
+
+    def __init__(self, spaceWidth):
+        Typesetter.__init__(self, spaceWidth)
 
     def bestPieceBy(self, pieces, utility):
         bestPiece = None
@@ -45,7 +50,7 @@ class LinearTypesetter(Typesetter):
     
     def isaSpaceBetween(self, char, lastChar, line):
         averageWidth = sum(character[0][2] for character in line)/float(len(line))
-        return char[0][0]-(lastChar[0][0]+lastChar[0][2]) > averageWidth/4
+        return char[0][0]-(lastChar[0][0]+lastChar[0][2]) > averageWidth*self.spaceWidth
         
     def lines(self, characterPieces):
         piecesLeft = set(characterPieces)
@@ -111,3 +116,4 @@ class LinearTypesetter(Typesetter):
     
     def typeset(self, characterPieces):
         return self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)])
+
