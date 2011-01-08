@@ -7,7 +7,7 @@ class FeatureExtractor(object):
         return Features()
 
 
-def buildLibrary(path, scaler, featureExtractor):
+def buildLibrary(path, binarizer, scaler, featureExtractor):
     dirs = os.listdir(path)
     chars = []
     for dir in dirs:
@@ -16,7 +16,7 @@ def buildLibrary(path, scaler, featureExtractor):
         library = []
         for file in files:
             im = cv.LoadImage(place + os.sep + file, cv.CV_LOAD_IMAGE_GRAYSCALE)
-            library.append([file[0],featureExtractor.extract(scaler.scale(im))])
+            library.append([file[0],featureExtractor.extract(scaler.scale(binarizer.binarize(im)))])
         chars.extend(library)
     return chars
 

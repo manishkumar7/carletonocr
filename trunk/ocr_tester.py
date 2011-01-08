@@ -13,7 +13,7 @@ def main():
     typesetter = options.typesetter()
     featureExtractor = options.featureExtractor()
     scaler = options.scaler(options.dimension)
-    library = extract.buildLibrary(options.library, scaler, featureExtractor)
+    library = extract.buildLibrary(options.library, binarizer, scaler, featureExtractor)
     linguist = options.linguist()
     matcher = match.knnMatcher(library, scaler, featureExtractor, options.k)
     recognizer = OCR(im, binarizer, segmenter, typesetter, matcher, linguist)
