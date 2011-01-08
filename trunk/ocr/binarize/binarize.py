@@ -32,3 +32,4 @@ class SimpleBinarizer(Binarizer):
         if blockSize % 2 == 0:
                 blockSize = blockSize - 1
         return blockSize
+

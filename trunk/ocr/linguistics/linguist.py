@@ -54,3 +54,4 @@ class NGramLinguist(Linguist):
         except ZeroDivisionError:
             modelProbability = 0
         return oldProbability*(1-self.selfImportance) + modelProbability*self.selfImportance
+

@@ -1,7 +1,7 @@
 import optparse
 import sys
 import cv
-from bop import *
+from ocr import *
 from nltk.corpus import brown
 
 def main():
@@ -10,7 +10,7 @@ def main():
     im = cv.LoadImage(options.target, cv.CV_LOAD_IMAGE_GRAYSCALE)
     binarizer = options.binarizer()
     segmenter = options.segmenter()
-    typesetter = options.typesetter()
+    typesetter = options.typesetter(options.spaceWidth)
     featureExtractor = options.featureExtractor()
     scaler = options.scaler(options.dimension)
     library = extract.buildLibrary(options.library, binarizer, scaler, featureExtractor)
@@ -27,6 +27,9 @@ def getOptions():
     """
 
     parser = optparse.OptionParser(usage="usage: %prog [options] image", version="%prog 0.1")
+
+    parser.add_option("--space-width", action="store", type="float", dest="spaceWidth", default=.25,
+            help="What proportion of the average character width is the width of a space")
 
     parser.add_option("-l", "--library-dir", action="store", dest="library",
             default="/Accounts/courses/comps/text_recognition/300/all/",
