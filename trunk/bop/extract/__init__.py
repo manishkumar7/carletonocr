@@ -1,12 +1,6 @@
 import cv
 import os
 
-class FeatureExtractor(object):
-    def extract(self, input):
-        '''Returns a features object, with a similarity method'''
-        return Features()
-
-
 def buildLibrary(path, binarizer, scaler, featureExtractor):
     dirs = os.listdir(path)
     chars = []
@@ -47,6 +41,11 @@ class ProportionalScaler(Scaler):
         #print "The transform is", matrix
         cv.WarpAffine(image, scaled, matrix, fillval=255)
         return scaled 
+
+class FeatureExtractor(object):
+    def extract(self, input):
+        '''Returns a features object, with a similarity method'''
+        return Features()
        
 class Features(object):
     def similarity(self, other):
@@ -82,13 +81,23 @@ class TemplateImage(Features):
                     n00 += 1
             #else:
                 #raise Exception("Why is there a pixel with value " + str(pair[0]))
-        distJ = float(n11)/(n11 + n10 + n01)
-        distY = (float(n11) * n00 - float(n10) * n01)/(float(n11) * n00 + float(n10) * n01)
-        return distJ
+        return self.formula(n00, n01, n10, n11)
 
-class TemplateComparison(FeatureExtractor):
+class TemplateImageOldFormula(TemplateImage):
+    def formula(self, n00, n01, n10, n11):
+        return (n00 + n11)/float(n11 + n00 + n10 + n01)
+
+class TemplateImageNewFormula(TemplateImage):
+    def formula(self, n00, n01, n10, n11):
+        return float(n11)/(n11 + n10 + n01)
+
+class TemplateComparisonOldFormula(FeatureExtractor):
     def extract(self, image):
-        return TemplateImage(image)
+        return TemplateImageOldFormula(image)
+
+class TemplateComparisonNewFormula(FeatureExtractor):
+    def extract(self, image):
+        return TemplateImageNewFormula(image)
 
 class ImageTranspose(object):
     def __init__(self, image):
