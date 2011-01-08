@@ -48,7 +48,7 @@ def getOptions():
             help="Typesetting policy. Options: linear, null. Default: linear")
 
     parser.add_option("--feature-extractor", action="store", dest="featureExtractor", default="template",
-            help="Feature extraction policy. Options: template, histogram")
+            help="Feature extraction policy. Options: template, template-old, histogram, histogram-vertical, histogram-horizontal")
 
     parser.add_option("--scaler", action="store", dest="scaler", default="proportional",
             help="Scaling policy. Options: simple, proportional. Default: proportional")
@@ -83,7 +83,8 @@ def getOptions():
         'segmenter': {'connected-component': segment.ConnectedComponentSegmenter, 'bounding-box': segment.BoundingBoxSegmenter},
         'typesetter': {'null': typeset.Typesetter, 'linear': typeset.LinearTypesetter},
         'featureExtractor': {
-            'template': extract.TemplateComparison,
+            'template': extract.TemplateComparisonNewFormula,
+            'template-old': extract.TemplateComparisonOldFormula,
             'histogram': extract.HistogramComparison,
             'vertical-histogram': extract.VerticalHistogramComparison,
             'horizontal-histogram': extract.HorizontalHistogramComparison
