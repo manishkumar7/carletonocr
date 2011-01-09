@@ -42,7 +42,7 @@ def getOptions():
             help="How many templates should vote on which character is chosen. k=1 means the single most similar template determines the character.")
 
     parser.add_option("--binarizer", action="store", dest="binarizer", default="simple",
-            help="Binarizer policy. Options: simple")
+            help="Binarizer policy. Options: simple, adaptive")
 
     parser.add_option("--segmenter", action="store", dest="segmenter", default="connected-component",
             help="Segmentation policy. Options: connected-component, bounding-box. Default: connected-component")
@@ -82,7 +82,7 @@ def getOptions():
     options.target = args[0]
 
     classMap = {
-        'binarizer': {'simple': binarize.SimpleBinarizer},
+        'binarizer': {'simple': binarize.SimpleBinarizer, 'adaptive' : binarize.LocalBinarizer},
         'segmenter': {'connected-component': segment.ConnectedComponentSegmenter, 'bounding-box': segment.BoundingBoxSegmenter},
         'typesetter': {'null': typeset.Typesetter, 'linear': typeset.LinearTypesetter},
         'featureExtractor': {
