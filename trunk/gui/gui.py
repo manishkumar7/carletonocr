@@ -1,6 +1,12 @@
 from Tkinter import *
 from notebook import notebook
 import tkFileDialog
+import cv
+
+def tkImageFromCv(image):
+    path = "/tmp/image.gif"
+    cv.SaveImage(path, image)
+    return PhotoImage(file=path)
 
 class OCRWindow:
     def addTab(self, imageName, optionFunc):
@@ -96,8 +102,7 @@ class OCRWindow:
     def update(self):
         self.fileLabel.config(text=self.filename if self.filename is not None else "No file selected")
         if self.filename:
-            #TODO: Actually use ImageTk in PyPIL so that we don't just support .gif
-            photo = PhotoImage(file=self.filename)
+            photo = tkImageFromCv(cv.LoadImage(self.filename))
             self.image.config(image=photo, text=None)
             self.image.photo = photo
         

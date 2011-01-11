@@ -7,7 +7,7 @@ from nltk.corpus import brown
 def main():
     options = getOptions()
 
-    im = cv.LoadImage(options.target, cv.CV_LOAD_IMAGE_GRAYSCALE)
+    im = cv.LoadImage(options.target, cv.CV_LOAD_IMAGE_COLOR)
     binarizer = options.binarizer()
     segmenter = options.segmenter()
     typesetter = options.typesetter(options.spaceWidth)
@@ -82,7 +82,7 @@ def getOptions():
     options.target = args[0]
 
     classMap = {
-        'binarizer': {'simple': binarize.SimpleBinarizer, 'adaptive' : binarize.LocalBinarizer},
+        'binarizer': {'simple': binarize.SimpleBinarizer, 'adaptive': binarize.LocalBinarizer},
         'segmenter': {'connected-component': segment.ConnectedComponentSegmenter, 'bounding-box': segment.BoundingBoxSegmenter},
         'typesetter': {'null': typeset.Typesetter, 'linear': typeset.LinearTypesetter},
         'featureExtractor': {
