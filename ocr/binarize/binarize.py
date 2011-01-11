@@ -9,7 +9,7 @@ class Binarizer:
         #Potential pain point in the future:
         #What if we want to use a grayscale algorithm?
         return image
-        
+
 class SimpleBinarizer(Binarizer):
     def binarize(self, im):
         '''Given an image, return a black and white image. Uses OPenCV's 
@@ -41,15 +41,15 @@ class LocalBinarizer(Binarizer):
         maxVal = 255
         bSize = self.getBlockSize(im)
         #create the binarized image
-        bestThreshold, numWhitePixels, bestPixels = 0
-        channels = [[] for i in range(3)]
-        cv.split(im, channels)
-        for threshold, channel in thresh, channels:
+        numWhitePixels, bestPixels = 0,0
+        channels = [cv.CreateImage((im.width, im.height), 8, 1) for i in range(3)]
+        cv.Split(im, channels[0], channels[1], channels[2], None)
+        for (threshold, channel) in zip(thresh, channels):
         	cv.AdaptiveThreshold(channel, threshold, maxVal, blockSize=bSize)
         for threshold in thresh:
-        	for row in threshold.height:
-        		for col in threshold.width:
-        			if threshold[row,col] == 1:
+        	for row in range(threshold.height):
+        		for col in range(threshold.width):
+        			if threshold[row,col] == 255:
         				numWhitePixels += 1
         	if numWhitePixels > bestPixels:
         		bestPixels = numWhitePixels

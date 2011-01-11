@@ -9,8 +9,10 @@ class OCR:
         self.typesetter = typesetter
         self.matcher = matcher
         self.linguist = linguist
+        print self.image.channels, "init"
         
     def recognize(self, saveBinarized, saveSegmented, saveTypeset, saveMatcher):
+    	print self.image.channels, "rec"
         blackAndWhite = self.binarizer.binarize(self.image)
         if saveBinarized != None:
             cv.SaveImage(saveBinarized, blackAndWhite)

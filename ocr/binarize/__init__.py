@@ -1,1 +1,1 @@
-from binarize import Binarizer, SimpleBinarizer
+from binarize import Binarizer, SimpleBinarizer, LocalBinarizer
