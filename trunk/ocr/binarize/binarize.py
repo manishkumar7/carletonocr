@@ -12,15 +12,17 @@ class Binarizer:
 
 class SimpleBinarizer(Binarizer):
     def binarize(self, im):
+        grayIm = cv.CreateImage((im.width, im.height), 8, 1)
+    	cv.CvtColor(im, grayIm, cv.CV_RGB2GRAY)
         '''Given an image, return a black and white image. Uses OPenCV's 
         adaptive thresholding with blockSize as large as possible'''
         #create an image that will eventually be a binarization of the input image
-        thresh = cv.CreateImage((im.width, im.height), 8, 1)
+        thresh = cv.CreateImage((grayIm.width, grayIm.height), 8, 1)
         #get parameter values
         maxVal = 255
-        bSize = self.getBlockSize(im)
+        bSize = self.getBlockSize(grayIm)
         #create the binarized image
-        cv.AdaptiveThreshold(im, thresh, maxVal, blockSize=bSize)
+        cv.AdaptiveThreshold(grayIm, thresh, maxVal, blockSize=bSize)
         return thresh
         
     def getBlockSize(self, image):
