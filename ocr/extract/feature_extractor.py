@@ -93,3 +93,21 @@ class VerticalHistogramComparison(FeatureExtractor):
 class HorizontalHistogramComparison(FeatureExtractor):
     def extract(self, image):
         return HorizontalHistogram(image)
+
+FOURIER_POINTS = 256
+
+class FourierDescriptor(Features):
+    def __init__(self, centroids, fouriers):
+        '''
+        Centroids should be a list of coordinate pairs
+        Fouriers should be a list of pairs of Fourier transforms of functions
+        each fourier transform is a list of floats of length FOURIER_POINTS/4
+        '''
+        self.centroids = centroids
+        self.fouriers = fouriers
+    def similarity(self, other):
+        return 0
+
+class FourierComparison(FeatureExtractor):
+    def extract(self, image):
+        return FourierDescriptor([], [])
