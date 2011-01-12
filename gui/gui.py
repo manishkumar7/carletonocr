@@ -4,11 +4,11 @@ import wx.aui
 import os
 
 def wxImageFromCv(image):
-    path = "/tmp/image.gif"
+    path = "/tmp/image.png"
     cv.SaveImage(path, image)
-    return wx.Image(path)
+    return wx.Image(path, type=wx.BITMAP_TYPE_PNG)
 
-class TabWindow():
+class TabWindow(object):
 
     def beside(self, parent, sizer, contents):
         panel = wx.Panel(parent=parent)
@@ -121,9 +121,10 @@ class TabWindow():
 
     def update(self):
         if self.filename is None:
-            print "No file selected"
+            print "No image"
         else:
-            print "The file name is", self.filename
+            self.image.DestroyChildren()
+            wx.StaticBitmap(self.image).SetBitmap(wxImageFromCv(cv.LoadImage(self.filename)).ConvertToBitmap())
 
 if __name__ == '__main__':
     TabWindow()
