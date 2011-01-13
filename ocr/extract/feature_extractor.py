@@ -192,22 +192,53 @@ class FourierComparison(FeatureExtractor):
         return output
 
     def contours(self, image):
-        unvisited = set((row, col) for col in range(image.width) for row in range(image.height))
+        unvisited = set((row, col) for col in range(image.width+1) for row in range(image.height+1))
         contours = []
         while len(unvisited) > 0:
-            pixel = unvisited.pop()
-            direction = self.pixelDirection(image, pixel)
+            vertex = unvisited.pop()
+            direction = self.direction(image, vertex)
             if direction != (0, 0):
             	contour = []
-            	while len(unvisited) > 0 and addTuples(pixel, direction) in unvisited:
-            		contour.append(pixel)
-            		pixel = unvisited.pop(addTuples(pixel, direction))
-            		direction = self.pixelDirection(image, pixel)
-            	contours.append(contour)
+            	print 'starting a new contour'
+            	while len(unvisited) > 0 and addTuples(vertex, direction) in unvisited:
+            		print 'adding', vertex
+            		contour.append(vertex)
+            		vertex = addTuples(vertex, direction)
+            		unvisited.remove(vertex)
+            		direction = self.direction(image, vertex)
             	assert addTuples(contour[-1],direction) == contour[0]
+            	contours.append(contour)
         return contours
     
+    def direction(self, image, vertex):
+    	print 'finding the direction from', vertex
+    	offsets = [(0, 0), (-1, 0), (-1, -1), (0, -1)]
+    	direction = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+    	def lookup(i):
+    	    coordinate = addTuples(vertex, offsets[i % len(offsets)])
+    	    if coordinate[0] < 0 or coordinate[1] < 0 or coordinate[0] >= image.height or coordinate[1] >= image.width:
+    	        return 255
+    	    return image[coordinate]
+    	for i in range(4):
+    		v = addTuples(vertex, offsets[i])
+    		print 'at pixel', v, 'the pixel is', lookup(i)
+    	candidates = [d for i, d in zip(range(len(offsets)), direction) if lookup(i) == 255 and lookup(i+1) == 0]
+    	if len(candidates) == 0:
+    		return (0, 0)
+    	elif len(candidates) == 1:
+    		return candidates[0]
+    	else:
+    		raise Exception("The image has not been correctly prepared")
+    	
+    def broaden(self, image):
+    	dst = cv.CreateImage((image.width, image.height), 8, 1)
+    	for row in range(image.height):
+    		for col in range(image.width):
+    			dst[row, col] = min(image[row, col], image[min(row+1, image.height-1), col])
+    	return dst
+    
     def extract(self, image):
+        image = self.broaden(image)
         contours = self.contours(image)
         for contour in contours:
         	print contour
