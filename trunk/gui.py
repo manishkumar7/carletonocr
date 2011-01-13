@@ -1,14 +1,10 @@
-import cv
 import wx
 import wx.aui
 import os
+import ocr
+import copy
 
-def wxImageFromCv(image):
-    path = "/tmp/image.png"
-    cv.SaveImage(path, image)
-    return wx.Image(path, type=wx.BITMAP_TYPE_PNG)
-
-class TabWindow(object):
+class OCRWindow(object):
 
     def beside(self, parent, sizer, contents):
         panel = wx.Panel(parent=parent)
@@ -112,19 +108,29 @@ class TabWindow(object):
         panel.SetSizer(sizer)
     
     def __init__(self):
-        self.filename = None
+        self.options = copy.copy(ocr.defaultOptions)
+        self.options.saveBinarized = '/tmp/binarized.png'
+        self.options.target = None
         self.app = wx.PySimpleApp()
-        frame = wx.Frame(None, title="Optical Character Recognition", size=(600, 400))
+        frame = wx.Frame(None, title="Optical Character Recognition")
         self.tabSet(frame)
         frame.Show()
         self.app.MainLoop()
 
+    def replaceImage(self, panel, path):
+        panel.DestroyChildren()
+        wx.StaticBitmap(panel).SetBitmap(wx.Image(path).ConvertToBitmap())
+
+    def replaceText(self, text):
+        panel.DestroyChildren()
+        wx.StaticText(parent=panel, label=text)
+
     def update(self):
-        if self.filename is None:
-            print "No image"
-        else:
-            self.image.DestroyChildren()
-            wx.StaticBitmap(self.image).SetBitmap(wxImageFromCv(cv.LoadImage(self.filename)).ConvertToBitmap())
+        if self.options.target is not None:
+            text = ocr.useOptions(ocr.processOptions(self.options))
+            self.replaceImage(self.image, self.options.target)
+            self.replaceImage(self.binarized, self.options.saveBinarized)
+            sellf.replaceText(self.output, text)
 
 if __name__ == '__main__':
-    TabWindow()
+    OCRWindow()
