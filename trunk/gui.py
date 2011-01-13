@@ -138,16 +138,14 @@ class OCRWindow(object):
         self.options.saveBinarized = '/tmp/binarized.png'
         self.options.target = None
         self.app = wx.PySimpleApp()
-        frame = wx.Frame(None, title="Optical Character Recognition")
+        frame = wx.Frame(None, title="Optical Character Recognition", size=(1200, 700))
         self.tabSet(frame)
         frame.Show()
         self.app.MainLoop()
 
     def update(self):
-        print 'updating'
         if self.options.target is not None:
             self.replaceImage(self.image, self.options.target)
-            print 'performing OCR'
             text = ocr.useOptions(ocr.processOptions(self.options))
             self.replaceImage(self.binarized, self.options.saveBinarized)
             self.replaceText(self.segmented, "Segmentation visualization not yet implemented")
