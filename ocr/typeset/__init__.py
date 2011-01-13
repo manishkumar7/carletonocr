@@ -1,1 +1,1 @@
-from typeset import Typesetter, LinearTypesetter
+from typeset import Typesetter, LinearTypesetter, characterCombine

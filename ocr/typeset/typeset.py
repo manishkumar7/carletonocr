@@ -6,6 +6,27 @@ class Typesetter(object):
     def typeset(self, characterPieces):
         return [character[1] for character in characterPieces]
 
+def combineImages(box1, image1, box2, image2):
+    outputBox = (min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[0]+box1[2], box2[0]+box2[2])-min(box1[0], box2[0]), max(box1[1]+box1[3], box2[1]+box2[3])-min(box1[1], box2[1]))
+    outputImage = cv.CreateImage((outputBox[2], outputBox[3]), 8, 1)
+    #cv.Rectangle(outputImage,(0,0),(outputImage.height, outputImage.width),255, cv.CV_FILLED)
+    for i in range(outputImage.height):
+        for j in range(outputImage.width):
+            outputImage[i, j] = 255
+    for box, image in [(box1, image1), (box2, image2)]:
+        offset = (box[0] - outputBox[0], box[1] - outputBox[1])
+        for row in range(image.height):
+            for col in range(image.width):
+                outputImage[row+offset[1], col+offset[0]] = image[row,col]
+    return outputBox, outputImage
+
+def characterCombine(characterPieces):
+    if len(characterPieces) > 2:
+        raise Exception("Too many character pieces")
+    if len(characterPieces) == 1:
+        return characterPieces[0][1]
+    return combineImages(characterPieces[0][0], characterPieces[0][1], characterPieces[1][0], characterPieces[1][1])[1]
+
 class LinearTypesetter(Typesetter):
 
     def __init__(self, spaceWidth):
@@ -80,21 +101,7 @@ class LinearTypesetter(Typesetter):
     
     def rangesOverlap(self, box1, box2, offset):
         return box1[offset] < box2[offset]+box2[offset+2] and box2[offset] < box1[offset]+box1[offset+2]
-    
-    def combineImages(self, box1, image1, box2, image2):
-        outputBox = (min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[0]+box1[2], box2[0]+box2[2])-min(box1[0], box2[0]), max(box1[1]+box1[3], box2[1]+box2[3])-min(box1[1], box2[1]))
-        outputImage = cv.CreateImage((outputBox[2], outputBox[3]), 8, 1)
-        #cv.Rectangle(outputImage,(0,0),(outputImage.height, outputImage.width),255, cv.CV_FILLED)
-        for i in range(outputImage.height):
-            for j in range(outputImage.width):
-                outputImage[i, j] = 255
-        for box, image in [(box1, image1), (box2, image2)]:
-            offset = (box[0] - outputBox[0], box[1] - outputBox[1])
-            for row in range(image.height):
-                for col in range(image.width):
-                    outputImage[row+offset[1], col+offset[0]] = image[row,col]
-        return outputBox, outputImage
-    
+        
     def combineVertical(self, line):
         accumulatedBox = None
         accumulatedImage = None
@@ -105,7 +112,7 @@ class LinearTypesetter(Typesetter):
                 accumulatedImage = image
             else:
                 if self.rangesOverlap(accumulatedBox, box, 0) and not self.rangesOverlap(accumulatedBox, box, 1):
-                    accumulatedBox, accumulatedImage = self.combineImages(box, image, accumulatedBox, accumulatedImage)
+                    accumulatedBox, accumulatedImage = combineImages(box, image, accumulatedBox, accumulatedImage)
                 else:
                     newLine.append((accumulatedBox, accumulatedImage))
                     accumulatedBox = box

@@ -2,6 +2,7 @@ import cv
 import os
 from nltk.corpus import brown
 import binarize, extract, linguistics, match, typeset, segment
+import copy
 
 class OCR:
     def __init__(self, image, binarizer, segmenter, typesetter, matcher, linguist):
@@ -42,7 +43,7 @@ def useOptions(options):
     typesetter = options.typesetter(options.spaceWidth)
     featureExtractor = options.featureExtractor()
     scaler = options.scaler(options.dimension)
-    library = extract.buildLibrary(options.library, binarizer, scaler, featureExtractor)
+    library = extract.buildLibrary(options.library, binarizer, scaler, segmenter, featureExtractor)
     linguist = options.linguist()
     matcher = match.knnMatcher(library, scaler, featureExtractor, options.k)
     recognizer = OCR(im, binarizer, segmenter, typesetter, matcher, linguist)
@@ -58,7 +59,8 @@ classMap = {
         'template-old': extract.TemplateComparisonOldFormula,
         'histogram': extract.HistogramComparison,
         'vertical-histogram': extract.VerticalHistogramComparison,
-        'horizontal-histogram': extract.HorizontalHistogramComparison
+        'horizontal-histogram': extract.HorizontalHistogramComparison,
+        'fourier-descriptor': extract.FourierComparison
      },
     'scaler': {'proportional': extract.ProportionalScaler, 'simple': extract.Scaler},
     'linguist': {
