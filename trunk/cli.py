@@ -1,6 +1,6 @@
 import optparse
 import ocr
-from ocr import defaultOptions
+from ocr import defaultOptions, classMap
 
 def main():
     options, parser = getOptions()
@@ -29,23 +29,16 @@ def getOptions():
     parser.add_option("-k", action="store", type="int", dest="k", default=defaultOptions.k,
             help="How many templates should vote on which character is chosen. k=1 means the single most similar template determines the character.")
 
-    parser.add_option("--binarizer", action="store", dest="binarizer", default=defaultOptions.binarizer,
-            help="Binarizer policy. Options: simple, adaptive")
+    def addOption(name, attr, desc):
+        parser.add_option(name, action="store", dest=attr, default=getattr(defaultOptions, attr),
+            help = "%s. Options: %s. Default: %s" % (desc, ', '.join(classMap[attr].keys()), getattr(defaultOptions, attr)))
 
-    parser.add_option("--segmenter", action="store", dest="segmenter", default=defaultOptions.segmenter,
-            help="Segmentation policy. Options: connected-component, bounding-box. Default: connected-component")
-
-    parser.add_option("--typesetter", action="store", dest="typesetter", default=defaultOptions.typesetter,
-            help="Typesetting policy. Options: linear, null. Default: linear")
-
-    parser.add_option("--feature-extractor", action="store", dest="featureExtractor", default=defaultOptions.featureExtractor,
-            help="Feature extraction policy. Options: template, template-old, histogram, histogram-vertical, histogram-horizontal")
-
-    parser.add_option("--scaler", action="store", dest="scaler", default=defaultOptions.scaler,
-            help="Scaling policy. Options: simple, proportional. Default: proportional")
-
-    parser.add_option("--linguist", action="store", dest="linguist", default=defaultOptions.linguist,
-            help="Linguistic correction policy. Options: null, n-gram. Default: null")
+    addOption('--binarizer', 'binarizer', "Binarizer policy")
+    addOption('--segmenter', 'segmenter', "Segmentation policy")
+    addOption('--typesetter', 'typesetter', "Typesetting policy")
+    addOption('--feature-extractor', 'featureExtractor', "Feature extraction policy")
+    addOption('--scaler', 'scaler', "Scaling policy")
+    addOption('--linguist', 'linguist', "Linguistic correction policy")
 
     parser.add_option("--save-binarized", action="store", dest="saveBinarized", default=defaultOptions.saveBinarized,
             help="Set this to a path to save the binarized image to a particular location")
