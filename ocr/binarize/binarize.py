@@ -12,8 +12,7 @@ class Binarizer:
 
 class SimpleBinarizer(Binarizer):
     def binarize(self, im):
-        grayIm = cv.CreateImage((im.width, im.height), 8, 1)
-    	cv.CvtColor(im, grayIm, cv.CV_RGB2GRAY)
+        grayIm = self.formatImage(im)
         '''Given an image, return a black and white image. Uses OPenCV's 
         adaptive thresholding with blockSize as large as possible'''
         #create an image that will eventually be a binarization of the input image
@@ -24,6 +23,16 @@ class SimpleBinarizer(Binarizer):
         #create the binarized image
         cv.AdaptiveThreshold(grayIm, thresh, maxVal, blockSize=bSize)
         return thresh
+    
+    def formatImage(self, image):
+        if image.nChannels == 1:
+            return im
+        elif image.nChannels == 3:
+            grayIm = cv.CreateImage((im.width, im.height), 8, 1)
+            grayIm = cv.CvtColor(image, grayIm, cv.CV_RGB2GRAY)
+            return grayIm
+        else:
+            raise Exception("Incorrect number of image channels.")
         
     def getBlockSize(self, image):
         '''Given an image, determines the blockSize argument for binarize().
@@ -38,16 +47,17 @@ class LocalBinarizer(Binarizer):
         '''Given an image, return a black and white image. Uses OPenCV's 
         adaptive thresholding with blockSize as large as possible'''
         #create an image that will eventually be a binarization of the input image
-        thresh = [cv.CreateImage((im.width, im.height), 8, 1) for i in range(3)]
         #get parameter values
         maxVal = 255
         bSize = self.getBlockSize(im)
         #create the binarized image
         numWhitePixels, bestPixels = 0,0
-        channels = [cv.CreateImage((im.width, im.height), 8, 1) for i in range(3)]
-        cv.Split(im, channels[0], channels[1], channels[2], None)
+        channels = self.formatImage(im)
+        thresh = [cv.CreateImage((im.width, im.height), 8, 1) for i in range(len(channels))]
         for (threshold, channel) in zip(thresh, channels):
         	cv.AdaptiveThreshold(channel, threshold, maxVal, blockSize=bSize)
+        if len(thresh) == 1:
+            return thresh[0]
         for threshold in thresh:
         	for row in range(threshold.height):
         		for col in range(threshold.width):
@@ -57,7 +67,19 @@ class LocalBinarizer(Binarizer):
         		bestPixels = numWhitePixels
         		bestThreshold = threshold
         	numWhitePixels = 0
+        cv.cvSaveImage("/Users/paulcarpenter/carletonocr/threshold.png", bestThreshold)
         return bestThreshold
+    
+    def formatImage(self, image):
+        if image.nChannels == 1:
+            return [im]
+        elif image.nChannels == 3:
+            channels = [cv.CreateImage((im.width, im.height), 8, 1) for i in range(3)]
+            cv.Split(im, channels[0], channels[1], channels[2], None)
+            return channels
+        else:
+            raise Exception("Incorrect number of image channels.")
+
         
     def getBlockSize(self, image, proportion=1):
         '''Given an image, determines the blockSize argument for binarize().
