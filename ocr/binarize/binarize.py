@@ -78,7 +78,7 @@ class LocalBinarizer(Binarizer):
                     bestThreshold = threshold
             numWhitePixels = 0
         for (threshold, i) in zip(thresh, range(3)):
-            cv.SaveImage("/Accounts/mccartya/carletonocr/"+str(i)+".png", threshold)
+            #cv.SaveImage("/Accounts/mccartya/carletonocr/"+str(i)+".png", threshold)
         return bestThreshold
     
     def formatImage(self, image):
