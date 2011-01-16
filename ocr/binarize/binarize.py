@@ -13,9 +13,9 @@ class Binarizer:
 
 class SimpleBinarizer(Binarizer):
     def binarize(self, im):
-        grayIm = self.formatImage(im)
         '''Given an image, return a black and white image. Uses OPenCV's 
         adaptive thresholding with blockSize as large as possible'''
+        grayIm = self.formatImage(im)
         #create an image that will eventually be a binarization of the input image
         thresh = cv.CreateImage((grayIm.width, grayIm.height), 8, 1)
         #get parameter values
@@ -27,10 +27,10 @@ class SimpleBinarizer(Binarizer):
     
     def formatImage(self, image):
         if image.nChannels == 1:
-            return im
+            return image
         elif image.nChannels == 3:
-            grayIm = cv.CreateImage((im.width, im.height), 8, 1)
-            grayIm = cv.CvtColor(image, grayIm, cv.CV_RGB2GRAY)
+            grayIm = cv.CreateImage((image.width, image.height), 8, 1)
+            cv.CvtColor(image, grayIm, cv.CV_RGB2GRAY)
             return grayIm
         else:
             raise Exception("Incorrect number of image channels.")
@@ -77,7 +77,7 @@ class LocalBinarizer(Binarizer):
                     #print bSize, "assigning threshold"
                     bestThreshold = threshold
             numWhitePixels = 0
-        for (threshold, i) in zip(thresh, range(3)):
+        #for (threshold, i) in zip(thresh, range(3)):
             #cv.SaveImage("/Accounts/mccartya/carletonocr/"+str(i)+".png", threshold)
         return bestThreshold
     

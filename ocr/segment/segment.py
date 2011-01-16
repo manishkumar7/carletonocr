@@ -11,6 +11,13 @@ class Segmenter:
         #What do we do with overlapping characters
         #or characters that aren't contiguous
         return []
+        
+    def showSegments(self, blackAndWhite, boundingBoxes):
+        segVisual = cv.CreateImage((blackAndWhite.width, blackAndWhite.height), 8, 3)
+        cv.CvtColor(blackAndWhite, segVisual, cv.CV_GRAY2RGB)
+        for box in boundingBoxes:
+        	cv.Rectangle(segVisual, (box[0],box[1]), (box[0]+box[2],box[1]+box[3]), cv.RGB(0.0, 250, 0.0), 1, 8)
+        return segVisual
     
 class ConnectedComponentSegmenter(Segmenter):
     
@@ -22,6 +29,8 @@ class ConnectedComponentSegmenter(Segmenter):
             if blackAndWhite[pixel] == 0:
                  output.append(self.findConnectedComponents(blackAndWhite, pixel, pixels))
         return output
+    
+    
     
     def findConnectedComponents(self, image, pixel, pixels):
         points = set([pixel])
@@ -71,7 +80,6 @@ class ConnectedComponentSegmenter(Segmenter):
                 else:
                     newImage[row,col] = 255
         return newImage
-
 
 class BoundingBoxSegmenter(Segmenter):
 

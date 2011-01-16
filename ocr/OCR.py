@@ -19,9 +19,11 @@ class OCR:
             cv.SaveImage(saveBinarized, blackAndWhite)
         characterPieces = self.segmenter.segment(blackAndWhite)
         if saveSegmented != None:
-            os.mkdir(saveSegmented)
-            for i in range(len(characterPieces)):
-                cv.SaveImage(saveSegmented+"/"+str(i)+".png", characterPieces[i][1])
+			segVisual = self.segmenter.showSegments(blackAndWhite, [box for (box,image) in characterPieces])
+			cv.SaveImage(saveSegmented, segVisual)
+#            os.mkdir(saveSegmented)
+#            for i in range(len(characterPieces)):
+#                cv.SaveImage(saveSegmented+"/"+str(i)+".png", characterPieces[i][1])
         pieces = self.typesetter.typeset(characterPieces)
         if saveTypeset != None:
             os.mkdir(saveTypeset)
@@ -71,7 +73,7 @@ classMap = {
 
 class Options: pass
 defaultOptions = Options()
-defaultOptions.spaceWidth = .3
+defaultOptions.spaceWidth = .4
 defaultOptions.library = "/Accounts/courses/comps/text_recognition/300/all/"
 defaultOptions.dimension = 100
 defaultOptions.k = 1
