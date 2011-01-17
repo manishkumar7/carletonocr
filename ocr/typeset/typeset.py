@@ -95,7 +95,7 @@ class LinearTypesetter(Typesetter):
                     if self.isaSpaceBetween(char, lastChar, line):
                         output.append(' ')
                 lastChar = char
-                output.append(char[1]) #OK up to here
+                output.append(char) #OK up to here
             output.append('\n')
         return output[:-1]
     
@@ -123,4 +123,26 @@ class LinearTypesetter(Typesetter):
     
     def typeset(self, characterPieces):
         return self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)])
-
+        
+    def showTypesetting(self, size, pieces):
+        typesetVisual = cv.CreateImage(size, 8, 1)
+        for i in range(typesetVisual.height):
+            for j in range(typesetVisual.width):
+                typesetVisual[i, j] = 255
+        leftMargin = pieces[0][0][0]
+        xPos = leftMargin
+        for chr in pieces:
+            xPos += 10
+            if chr == '\n':
+                xPos = leftMargin
+            elif chr == ' ':
+                xPos += 10
+            else:
+                bBox = chr[0]
+                im = chr[1]
+                for i in range(bBox[3]):
+                    for j in range(bBox[2]):
+                        if im [i, j] < 1:
+                            typesetVisual[i+bBox[1],j+bBox[0]] = 0.0
+                xPos += bBox[2]
+        return typesetVisual

@@ -21,15 +21,15 @@ class OCR:
         if saveSegmented != None:
 			segVisual = self.segmenter.showSegments(blackAndWhite, [box for (box,image) in characterPieces])
 			cv.SaveImage(saveSegmented, segVisual)
-#            os.mkdir(saveSegmented)
-#            for i in range(len(characterPieces)):
-#                cv.SaveImage(saveSegmented+"/"+str(i)+".png", characterPieces[i][1])
         pieces = self.typesetter.typeset(characterPieces)
         if saveTypeset != None:
-            os.mkdir(saveTypeset)
-            for i in range(len(pieces)):
-                if not isinstance(pieces[i], str):
-                    cv.SaveImage(saveTypeset+"/"+str(i)+".png", pieces[i])
+            typesetVisual = self.typesetter.showTypesetting((self.image.width,self.image.height),pieces)
+            print typesetVisual, saveTypeset
+            cv.SaveImage(saveTypeset, typesetVisual)
+        #Removes bounding boxes from pieces tuples before passing to matcher
+        for i in range(len(pieces)):
+            if len(pieces[i]) == 2:
+                pieces[i] = pieces[i][1]
         possibilities = self.matcher.match(pieces)
         if saveMatcher != None:
             matcherOutput = file(saveMatcher, "w")
