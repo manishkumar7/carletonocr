@@ -1,4 +1,5 @@
 import cv
+import numpy
 
 class FeatureExtractor(object):
     def extract(self, input):
@@ -102,7 +103,10 @@ CENTROID_THRESHOLD = 0
 class FourierDescriptor(Features):
     class Curve(object):
         def fourier(self, points, coordinate):
-            return []
+            # T-shift isn't implemented because I don't understand the actual math
+            # However, I'm additionally not clear if it needs to be done per-comparison
+            # or can be done once.
+            return numpy.fft.fft([point[coordinate] for point in points], FOURIER_APPROX_DEPTH)
         def __init__(self, ordinal, offset, points):
             self.ordinal = ordinal
             self.offset = offset
@@ -141,9 +145,23 @@ class FourierDescriptor(Features):
                 if difference > 0: count += 1
             if count > CENTROID_THRESHOLD:
                 return sum + 10000
-            return 1000000 #Actually compare fourier descriptors here
+            return 1/self.fourierDistance(other)
         else:
             return 0
+
+    def fourierDistance(self, other):
+        """Given another descriptor, compare the Fourier coefficients of that curve against
+        this curve, and return their symmetric difference."""
+        for myCurve, yourCurve in zip(self.curves, other.curves):
+            # These are sorted, yes? If not they should be, or we need an ordinal->curve mapping
+            # Also, positive, negative aren't separated here; should they be separated in the
+            # descriptor or partitioned again here? Should be just a simple loop once they are.
+            diffX = sum([abs(matched[0] - matched[1]) for matched in 
+                zip(myCurve.fourierX[1:], yourCurve.fourierX[1:])]) # Don't include the offset coeff
+            diffY = sum([abs(matched[0] - matched[1]) for matched in 
+                zip(myCurve.fourierY[1:], yourCurve.fourierY[1:])]) 
+            return diffX + diffY # Don't think the paper specifies if this should be an average
+                                 # or anything else.
 
 def partition(list, predicate):
     yes, no = [], []
