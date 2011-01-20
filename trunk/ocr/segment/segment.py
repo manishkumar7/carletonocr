@@ -12,11 +12,17 @@ class Segmenter:
         #or characters that aren't contiguous
         return []
         
-    def showSegments(self, blackAndWhite, boundingBoxes):
+    def showSegments(self, blackAndWhite, characterPieces):
         segVisual = cv.CreateImage((blackAndWhite.width, blackAndWhite.height), 8, 3)
-        cv.Rectangle(segVisual, (0, 0), (segVisual.width, segVisual.height), (255, 255, 255), -1)
-        for box, image in boundingBoxes:
-        	cv.Rectangle(segVisual, (box[0],box[1]), (box[0]+box[2],box[1]+box[3]), cv.RGB(0, 200, 0), 1, 8)
+        for row in range(segVisual.height):
+        	for col in range(segVisual.width):
+        		segVisual[row, col] = (255,255,255)
+        for box, image in characterPieces:
+        	for row in range(box[3]):
+        		for col in range(box[2]):
+        			if image[row, col]  < 1:
+        				segVisual[box[1]+row, box[0]+col] = (0,0,0)
+        	cv.Rectangle(segVisual, (box[0],box[1]), (box[0]+box[2],box[1]+box[3]), cv.RGB(0, 200, 0), 1, 8)        
         return segVisual
     
 class ConnectedComponentSegmenter(Segmenter):
