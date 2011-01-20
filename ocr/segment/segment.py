@@ -14,9 +14,9 @@ class Segmenter:
         
     def showSegments(self, blackAndWhite, boundingBoxes):
         segVisual = cv.CreateImage((blackAndWhite.width, blackAndWhite.height), 8, 3)
-        cv.CvtColor(blackAndWhite, segVisual, cv.CV_GRAY2RGB)
-        for box in boundingBoxes:
-        	cv.Rectangle(segVisual, (box[0],box[1]), (box[0]+box[2],box[1]+box[3]), cv.RGB(0.0, 250, 0.0), 1, 8)
+        cv.Rectangle(segVisual, (0, 0), (segVisual.width, segVisual.height), (255, 255, 255), -1)
+        for box, image in boundingBoxes:
+        	cv.Rectangle(segVisual, (box[0],box[1]), (box[0]+box[2],box[1]+box[3]), cv.RGB(0, 200, 0), 1, 8)
         return segVisual
     
 class ConnectedComponentSegmenter(Segmenter):
@@ -29,8 +29,6 @@ class ConnectedComponentSegmenter(Segmenter):
             if blackAndWhite[pixel] == 0:
                  output.append(self.findConnectedComponents(blackAndWhite, pixel, pixels))
         return output
-    
-    
     
     def findConnectedComponents(self, image, pixel, pixels):
         points = set([pixel])
@@ -69,7 +67,7 @@ class ConnectedComponentSegmenter(Segmenter):
             if point[1] > maxCol:
                 maxCol = point[1]
         #(x,y,width,height)
-        return (minCol, minRow, maxCol-minCol, maxRow-minRow)
+        return (minCol-1, minRow-1, maxCol-minCol+1, maxRow-minRow+1)
     
     def createImage(self, boundingBox, points):
         newImage = cv.CreateImage((boundingBox[2], boundingBox[3]), 8, 1)

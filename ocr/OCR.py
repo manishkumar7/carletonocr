@@ -19,17 +19,13 @@ class OCR:
             cv.SaveImage(saveBinarized, blackAndWhite)
         characterPieces = self.segmenter.segment(blackAndWhite)
         if saveSegmented != None:
-			segVisual = self.segmenter.showSegments(blackAndWhite, [box for (box,image) in characterPieces])
+			segVisual = self.segmenter.showSegments(blackAndWhite, characterPieces)
 			cv.SaveImage(saveSegmented, segVisual)
         pieces = self.typesetter.typeset(characterPieces)
         if saveTypeset != None:
             typesetVisual = self.typesetter.showTypesetting((self.image.width,self.image.height),pieces)
             print typesetVisual, saveTypeset
             cv.SaveImage(saveTypeset, typesetVisual)
-        #Removes bounding boxes from pieces tuples before passing to matcher
-        for i in range(len(pieces)):
-            if len(pieces[i]) == 2:
-                pieces[i] = pieces[i][1]
         possibilities = self.matcher.match(pieces)
         if saveMatcher != None:
             matcherOutput = file(saveMatcher, "w")
@@ -74,7 +70,8 @@ classMap = {
 class Options: pass
 defaultOptions = Options()
 defaultOptions.spaceWidth = .4
-defaultOptions.library = "/Accounts/courses/comps/text_recognition/300/all/"
+#defaultOptions.library = "/Accounts/courses/comps/text_recognition/300/all/"
+defaultOptions.library = "text_recognition/300/all/"
 defaultOptions.dimension = 100
 defaultOptions.k = 1
 defaultOptions.binarizer = 'simple'

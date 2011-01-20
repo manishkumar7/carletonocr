@@ -9,16 +9,46 @@ class Typesetter(object):
 def combineImages(box1, image1, box2, image2):
     outputBox = (min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[0]+box1[2], box2[0]+box2[2])-min(box1[0], box2[0]), max(box1[1]+box1[3], box2[1]+box2[3])-min(box1[1], box2[1]))
     outputImage = cv.CreateImage((outputBox[2], outputBox[3]), 8, 1)
-    #cv.Rectangle(outputImage,(0,0),(outputImage.height, outputImage.width),255, cv.CV_FILLED)
-    for i in range(outputImage.height):
-        for j in range(outputImage.width):
-            outputImage[i, j] = 255
+    cv.Rectangle(outputImage, (0, 0), (outputImage.width, outputImage.height), 255, cv.CV_FILLED)
     for box, image in [(box1, image1), (box2, image2)]:
         offset = (box[0] - outputBox[0], box[1] - outputBox[1])
         for row in range(image.height):
             for col in range(image.width):
                 outputImage[row+offset[1], col+offset[0]] = image[row,col]
     return outputBox, outputImage
+
+#Set these appropriately
+TOP_MARGIN = 0
+LEFT_MARGIN = 0
+RIGHT_MARGIN = 0
+BOTTOM_MARGIN = 0
+SPACE_WIDTH = 0 #Check isaSpaceBetween() for a way to get this value
+CHARACTER_SPACING = 0
+SPACE_BETWEEN_LINES = 0
+
+#Only use information coming from the typesetter.
+def showTypesetting(self, pieces):
+    typesetVisual = cv.CreateImage(size, 8, 1)
+    for i in range(typesetVisual.height):
+        for j in range(typesetVisual.width):
+            typesetVisual[i, j] = 255
+    leftMargin = pieces[0][0][0]
+    xPos = leftMargin
+    for chr in pieces:
+        xPos += 10
+        if chr == '\n':
+            xPos = leftMargin
+        elif chr == ' ':
+            xPos += 10
+        else:
+            bBox = chr[0]
+            im = chr[1]
+            for i in range(bBox[3]):
+                for j in range(bBox[2]):
+                    if im [i, j] < 1:
+                        typesetVisual[i+bBox[1]+xpos,j+bBox[0]] = 0.0
+            xPos += bBox[2]
+    return typesetVisual
 
 def characterCombine(characterPieces):
     if len(characterPieces) > 2:
@@ -70,7 +100,10 @@ class LinearTypesetter(Typesetter):
         return self.bestPieceBy(piecesLeft, utility)
     
     def isaSpaceBetween(self, char, lastChar, line):
+        global SPACE_WIDTH
         averageWidth = sum(character[0][2] for character in line)/float(len(line))
+        #Naive way to get the space width when displaying
+        SPACE_WIDTH = averageWidth
         return char[0][0]-(lastChar[0][0]+lastChar[0][2]) > averageWidth*self.spaceWidth
         
     def lines(self, characterPieces):
@@ -122,27 +155,4 @@ class LinearTypesetter(Typesetter):
         return newLine
     
     def typeset(self, characterPieces):
-        return self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)])
-        
-    def showTypesetting(self, size, pieces):
-        typesetVisual = cv.CreateImage(size, 8, 1)
-        for i in range(typesetVisual.height):
-            for j in range(typesetVisual.width):
-                typesetVisual[i, j] = 255
-        leftMargin = pieces[0][0][0]
-        xPos = leftMargin
-        for chr in pieces:
-            xPos += 10
-            if chr == '\n':
-                xPos = leftMargin
-            elif chr == ' ':
-                xPos += 10
-            else:
-                bBox = chr[0]
-                im = chr[1]
-                for i in range(bBox[3]):
-                    for j in range(bBox[2]):
-                        if im [i, j] < 1:
-                            typesetVisual[i+bBox[1],j+bBox[0]] = 0.0
-                xPos += bBox[2]
-        return typesetVisual
+        return [image for (box, image) in self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)])]
