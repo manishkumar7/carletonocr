@@ -46,21 +46,25 @@ class OCRWindow(object):
         panel.DestroyChildren()
         wx.StaticText(parent=panel, label=text)
 
-    def fileOptions(self, parent, sizer):
+    def chooseFile(self, parent, sizer, attr, defaultLabel, prompt):
         def contents(panel):
-            button = wx.Button(panel, wx.ID_ANY, "Choose file")
+            button = wx.Button(panel, wx.ID_ANY, prompt)
             namePanel = wx.Panel(panel, wx.HORIZONTAL)
-            self.replaceText(namePanel, "  No file loaded")
+            self.replaceText(namePanel, "  "+defaultLabel)
             def chooseFile(evt):
-                dialog = wx.FileDialog(parent, message="Open an Image", defaultDir=os.getcwd(), style=wx.OPEN)
+                dialog = wx.FileDialog(parent, message=prompt, defaultDir=os.getcwd(), style=wx.OPEN)
                 if dialog.ShowModal() == wx.ID_OK:
                     filename = dialog.GetPath()
-                    self.options.target = filename
+                    setattr(self.options, attr, filename)
                     self.replaceText(namePanel, "  "+filename)
                 dialog.Destroy()
             self.app.Bind(wx.EVT_BUTTON, chooseFile, button)
             return button, namePanel
         self.beside(parent, sizer, contents, expandLeft=False)
+    
+    def fileOptions(self, parent, sizer):
+        self.chooseFile(parent, sizer, "target", "No file loaded", "Choose file")
+        self.chooseFile(parent, sizer, "library", self.options.library, "Choose library path")
 
     def besideLabel(self, parent, sizer, name, right):
         def contents(panel):
@@ -116,7 +120,7 @@ class OCRWindow(object):
     
     def tabSet(self, frame):
         panel = wx.Panel(parent=frame)
-        notebook = wx.aui.AuiNotebook(panel)
+        notebook = wx.aui.AuiNotebook(panel, style=wx.aui.AUI_NB_TOP)
         tabParameters = [
             ('image', self.fileOptions, "Original"),
             ('binarized', self.binarizerOptions, "Binary"),

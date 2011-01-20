@@ -1,5 +1,6 @@
 import cv
 import numpy
+import math
 
 class FeatureExtractor(object):
     def extract(self, input):
@@ -99,6 +100,7 @@ FOURIER_POINTS = 256
 TOLERANCE = .1
 AREA_THRESHOLD = 4
 CENTROID_THRESHOLD = 0
+FILTER_LENGTH = FOURIER_POINTS/2
 
 class FourierDescriptor(Features):
     class Curve(object):
@@ -106,7 +108,17 @@ class FourierDescriptor(Features):
             # T-shift isn't implemented because I don't understand the actual math
             # However, I'm additionally not clear if it needs to be done per-comparison
             # or can be done once.
-            return numpy.fft.fft([point[coordinate] for point in points], FOURIER_APPROX_DEPTH)
+            points = [point[coordinate] for point in points]
+            def interpolate(i):
+                index = len(points)*(float(i)/FOURIER_POINTS)
+                before = int(math.floor(index))
+                after = int(math.ceil(index))
+                if after >= len(points):
+                    return points[before]
+                else:
+                    return int(points[before]*(index - before) + points[after]*(after - index))
+            interpolated = [interpolate(i) for i in range(FOURIER_POINTS)]
+            return numpy.fft.fft(interpolated)[:FILTER_LENGTH]
         def __init__(self, ordinal, offset, points):
             self.ordinal = ordinal
             self.offset = offset
@@ -183,6 +195,11 @@ def averagePoint(data):
 def addTuples(tup1, tup2):
 	return tuple(t1+t2 for (t1, t2) in zip(tup1, tup2))
 	
+def negTuple(tup):
+    return tuple(-t for t in tup)
+
+def minusTuples(tup1, tup2):
+    return addTuples(tup1, negTuple(tup2))
 
 class FourierComparison(FeatureExtractor):
     class Curve(object):
@@ -192,7 +209,9 @@ class FourierComparison(FeatureExtractor):
             self.area = cv.ContourArea(points)
  
     def averageCentroid(self, data):
-        return averagePoint([curve.centroid for curve in data])
+        if data:
+            return averagePoint([curve.centroid for curve in data])
+        return (0,0)
     
     def sortOrdinals(self, data, imgDim):
         output = [([-1, -1], curve) for curve in data]
@@ -204,8 +223,8 @@ class FourierComparison(FeatureExtractor):
         sortedOrds = sorted(zip(range(len(data)), data), key=lambda pair: pair[1].centroid[coord])
         ordinalOffset = 0
         for ordinal in range(len(sortedOrds)):
-            output[sortedOrds[ordinal][0]][coord] = ordinal-ordinalOffset
-            if ordinal+1 < len(sortedOrds) and (sortedOrds[ordinal].centroid[coord] - sortedOrds[ordinal+1].centroid[coord]) / imgDim[coord] < TOLERANCE:
+            output[sortedOrds[ordinal][0]][0][coord] = ordinal-ordinalOffset
+            if ordinal+1 < len(sortedOrds) and (sortedOrds[ordinal][1].centroid[coord] - sortedOrds[ordinal+1][1].centroid[coord]) / imgDim[coord] < TOLERANCE:
                 ordinalOffset += 1
         return output
 
@@ -216,22 +235,24 @@ class FourierComparison(FeatureExtractor):
             vertex = unvisited.pop()
             direction = self.direction(image, vertex)
             if direction != (0, 0):
-            	contour = []
-            	print 'starting a new contour'
+            	contour = [vertex]
+            	#print 'starting a new contour'
             	while len(unvisited) > 0 and addTuples(vertex, direction) in unvisited:
-            		print 'adding', vertex
-            		contour.append(vertex)
             		vertex = addTuples(vertex, direction)
+            		#print 'adding', vertex
+            		contour.append(vertex)
             		unvisited.remove(vertex)
             		direction = self.direction(image, vertex)
+            		#print "The direction is", direction
+                #print contour
             	assert addTuples(contour[-1],direction) == contour[0]
             	contours.append(contour)
         return contours
     
     def direction(self, image, vertex):
-    	print 'finding the direction from', vertex
+    	#print 'finding the direction from', vertex
     	offsets = [(0, 0), (-1, 0), (-1, -1), (0, -1)]
-    	direction = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+    	direction = [(0, 1), (-1, 0), (0, -1), (1, 0)]
     	def lookup(i):
     	    coordinate = addTuples(vertex, offsets[i % len(offsets)])
     	    if coordinate[0] < 0 or coordinate[1] < 0 or coordinate[0] >= image.height or coordinate[1] >= image.width:
@@ -239,31 +260,45 @@ class FourierComparison(FeatureExtractor):
     	    return image[coordinate]
     	for i in range(4):
     		v = addTuples(vertex, offsets[i])
-    		print 'at pixel', v, 'the pixel is', lookup(i)
+    		#print 'at pixel', v, 'the pixel is', lookup(i)
     	candidates = [d for i, d in zip(range(len(offsets)), direction) if lookup(i) == 255 and lookup(i+1) == 0]
     	if len(candidates) == 0:
     		return (0, 0)
     	elif len(candidates) == 1:
     		return candidates[0]
     	else:
-    		raise Exception("The image has not been correctly prepared")
+            print 'dim', image.width, image.height
+            print 'vertex', vertex
+            print 'values', [(lookup(i), offsets[i]) for i in range(4)]
+            raise Exception("The image has not been correctly prepared")
     	
     def broaden(self, image):
+        print 'broadening'
     	dst = cv.CreateImage((image.width, image.height), 8, 1)
-    	for row in range(image.height):
-    		for col in range(image.width):
-    			dst[row, col] = min(image[row, col], image[min(row+1, image.height-1), col])
+    	cv.Copy(image, dst)
+    	keepGoing = True
+    	while keepGoing:
+    	   print 'looping'
+    	   keepGoing = False
+    	   for row in range(image.height-1):
+    	       for col in range(image.width-1):
+    	           for i in range(2):
+    	               blackWhite = [0, 255]
+    	               if dst[row, col] == blackWhite[i] == dst[row+1, col+1] and dst[row+1, col] == blackWhite[(i+1)%2] == dst[row, col+1]:
+    	                   print 'blackening'
+    	                   dst[row, col] = 0
+    	                   dst[row+1, col] = 0
+    	                   keepGoing = True
+        print 'broadened'
     	return dst
     
     def extract(self, image):
         image = self.broaden(image)
         contours = self.contours(image)
-        for contour in contours:
-        	print contour
         data = [FourierComparison.Curve(curve) for curve in contours]
         data = [curve for curve in data if curve.area > AREA_THRESHOLD]
         positive, negative = partition(data, lambda curve: curve.area > 0)
-        displacement = self.averageCentroid(positive) - self.averageCentroid(negative)
+        displacement = minusTuples(self.averageCentroid(positive), self.averageCentroid(negative))
         ordinals = self.sortOrdinals(data, (image.width, image.height))
-        curves = [FourierDescriptor.Curve(ordinal, curve.centroid - displacement, curve.points) for (ordinal, curve) in ordinals]
+        curves = [FourierDescriptor.Curve(ordinal, minusTuples(curve.centroid, displacement), curve.points) for (ordinal, curve) in ordinals]
         return FourierDescriptor(displacement, curves, (image.width, image.height))
