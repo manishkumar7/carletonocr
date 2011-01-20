@@ -5,6 +5,54 @@ class Typesetter(object):
         self.spaceWidth = spaceWidth
     def typeset(self, characterPieces):
         return [character[1] for character in characterPieces]
+    #Only use information coming from the typesetter.
+    def showTypesetting(self, pieces):
+        numLines = pieces.count('\n') + 1
+        lines = []
+        for i in range(numLines):
+            #line = [# chrs, sum of chr widths, # spaces]
+            lines.append([0,0,0])
+        curLine = 0
+        yMax = 0
+        for chr in pieces:
+            if chr == ' ':
+                lines[curLine][2] += 1
+            elif chr == '\n':
+                curLine += 1
+            else:
+                lines[curLine][0] += 1
+                lines[curLine][1] += chr.width
+                if chr.height > yMax:
+                    yMax = chr.height
+        totX = sum([l[1] for l in lines])
+        spaceWidth = float(totX)/sum([l[1] for l in lines])
+        for i in range(len(lines)):
+            lines[i][1] += lines[i][0]*spaceWidth + lines[i][2]*spaceWidth*9
+        imWidth = max([l[1] for l in lines]) + 2*spaceWidth
+        imHeight = numLines * yMax + (numLines - 1) * .5 * yMax + 2*spaceWidth
+        typesetVisual = cv.CreateImage((int(imWidth), int(imHeight)), 8, 3)
+        for row in range(typesetVisual.height):
+            for col in range(typesetVisual.width):
+                typesetVisual[row, col] = (255,255,255)
+        xStart = int(spaceWidth)
+        y = int(spaceWidth)
+        x = xStart
+        for chr in pieces:
+            if chr == ' ':
+                cv.Rectangle(typesetVisual, (x,y), (int(x+spaceWidth*9), y+yMax), cv.RGB(10, 200, 10), -1)        
+                x += int(spaceWidth * 9)
+            elif chr == '\n':
+                x = xStart
+                y += int(yMax*1.5)
+                cv.Rectangle(typesetVisual, (0, int(y-yMax*.5)), (typesetVisual.width, y), cv.RGB(10, 10, 200), -1)        
+            else:
+                for row in range(chr.height):
+                    for col in range(chr.width):
+                        if chr[row, col]  < 1:
+                            typesetVisual[y+row, x+col] = (0,0,0)
+                x += (int(spaceWidth) + chr.width)
+        return typesetVisual
+
 
 def combineImages(box1, image1, box2, image2):
     outputBox = (min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[0]+box1[2], box2[0]+box2[2])-min(box1[0], box2[0]), max(box1[1]+box1[3], box2[1]+box2[3])-min(box1[1], box2[1]))
@@ -26,29 +74,7 @@ SPACE_WIDTH = 0 #Check isaSpaceBetween() for a way to get this value
 CHARACTER_SPACING = 0
 SPACE_BETWEEN_LINES = 0
 
-#Only use information coming from the typesetter.
-def showTypesetting(self, pieces):
-    typesetVisual = cv.CreateImage(size, 8, 1)
-    for i in range(typesetVisual.height):
-        for j in range(typesetVisual.width):
-            typesetVisual[i, j] = 255
-    leftMargin = pieces[0][0][0]
-    xPos = leftMargin
-    for chr in pieces:
-        xPos += 10
-        if chr == '\n':
-            xPos = leftMargin
-        elif chr == ' ':
-            xPos += 10
-        else:
-            bBox = chr[0]
-            im = chr[1]
-            for i in range(bBox[3]):
-                for j in range(bBox[2]):
-                    if im [i, j] < 1:
-                        typesetVisual[i+bBox[1]+xpos,j+bBox[0]] = 0.0
-            xPos += bBox[2]
-    return typesetVisual
+
 
 def characterCombine(characterPieces):
     if len(characterPieces) > 2:
@@ -155,4 +181,11 @@ class LinearTypesetter(Typesetter):
         return newLine
     
     def typeset(self, characterPieces):
-        return [image for (box, image) in self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)])]
+        pieces = self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)])
+        output = []
+        for p in pieces:
+            if p == ' ' or p == '\n':
+                output.append(p)
+            else:
+                output.append(p[1])
+        return output

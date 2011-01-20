@@ -23,8 +23,7 @@ class OCR:
 			cv.SaveImage(saveSegmented, segVisual)
         pieces = self.typesetter.typeset(characterPieces)
         if saveTypeset != None:
-            typesetVisual = self.typesetter.showTypesetting((self.image.width,self.image.height),pieces)
-            print typesetVisual, saveTypeset
+            typesetVisual = self.typesetter.showTypesetting(pieces)
             cv.SaveImage(saveTypeset, typesetVisual)
         possibilities = self.matcher.match(pieces)
         if saveMatcher != None:
