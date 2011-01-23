@@ -136,7 +136,10 @@ class FourierDescriptor(Features):
         self.dimension = dimension
         
     def comparable(self, other):
-        return [curve.ordinal for curve in self.curves] == [curve.ordinal for curve in other.curves]
+        for myKind, yourKind in zip(self.curves, other.curves):
+            if [curve.ordinal for curve in myKind] != [curve.ordinal for curve in yourKind]:
+                return False
+        return True
 
     def similarCoordinates(self, c1, c2):
         difference = [abs(c1[i]-c2[i]) for i in range(2)]
@@ -151,29 +154,28 @@ class FourierDescriptor(Features):
             if difference > 0: return difference
             sum = 0
             count = 0
-            for myCurve, yourCurve in zip(self.curves, other.curves):
-                difference = self.similarCoordinates(myCurve.offset, yourCurve.offset)
-                sum += difference
-                if difference > 0: count += 1
+            for myCurves, yourCurves in zip(self.curves, other.curves):
+                for myCurve, yourCurve in zip(myCurves, yourCurves):
+                    difference = self.similarCoordinates(myCurve.offset, yourCurve.offset)
+                    sum += difference
+                    if difference > 0: count += 1
             if count > CENTROID_THRESHOLD:
                 return sum + 10000
-            return 1/self.fourierDistance(other)
+            return 1.0/(self.fourierDistance(other)+1) + 100000
         else:
             return 0
 
     def fourierDistance(self, other):
         """Given another descriptor, compare the Fourier coefficients of that curve against
         this curve, and return their symmetric difference."""
-        for myCurve, yourCurve in zip(self.curves, other.curves):
-            # These are sorted, yes? If not they should be, or we need an ordinal->curve mapping
-            # Also, positive, negative aren't separated here; should they be separated in the
-            # descriptor or partitioned again here? Should be just a simple loop once they are.
-            diffX = sum([abs(matched[0] - matched[1]) for matched in 
-                zip(myCurve.fourierX[1:], yourCurve.fourierX[1:])]) # Don't include the offset coeff
-            diffY = sum([abs(matched[0] - matched[1]) for matched in 
-                zip(myCurve.fourierY[1:], yourCurve.fourierY[1:])]) 
-            return diffX + diffY # Don't think the paper specifies if this should be an average
-                                 # or anything else.
+        for myCurves, yourCurves in zip(self.curves, other.curves):
+            for myCurve, yourCurve in zip(myCurves, yourCurves):
+                diffX = sum([abs(matched[0] - matched[1]) for matched in 
+                    zip(myCurve.fourierX[1:], yourCurve.fourierX[1:])]) # Don't include the offset coeff
+                diffY = sum([abs(matched[0] - matched[1]) for matched in 
+                    zip(myCurve.fourierY[1:], yourCurve.fourierY[1:])]) 
+                return diffX + diffY # Don't think the paper specifies if this should be an average
+                                     # or anything else.
 
 def partition(list, predicate):
     yes, no = [], []
@@ -297,8 +299,11 @@ class FourierComparison(FeatureExtractor):
         contours = self.contours(image)
         data = [FourierComparison.Curve(curve) for curve in contours]
         data = [curve for curve in data if curve.area > AREA_THRESHOLD]
-        positive, negative = partition(data, lambda curve: curve.area > 0)
+        curveKinds = partition(data, lambda curve: curve.area > 0)
         displacement = minusTuples(self.averageCentroid(positive), self.averageCentroid(negative))
-        ordinals = self.sortOrdinals(data, (image.width, image.height))
-        curves = [FourierDescriptor.Curve(ordinal, minusTuples(curve.centroid, displacement), curve.points) for (ordinal, curve) in ordinals]
-        return FourierDescriptor(displacement, curves, (image.width, image.height))
+        curveAggregate = []
+        for kind in curveKinds:
+            ordinals = self.sortOrdinals(kind, (image.width, image.height))
+            curves = [FourierDescriptor.Curve(ordinal, minusTuples(curve.centroid, displacement), curve.points) for (ordinal, curve) in ordinals]
+            curveAggregate.append(curves)
+        return FourierDescriptor(displacement, curveAggregate, (image.width, image.height))
