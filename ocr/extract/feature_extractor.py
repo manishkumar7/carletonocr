@@ -168,14 +168,16 @@ class FourierDescriptor(Features):
     def fourierDistance(self, other):
         """Given another descriptor, compare the Fourier coefficients of that curve against
         this curve, and return their symmetric difference."""
+        diffX = 0
+        diffY = 0
         for myCurves, yourCurves in zip(self.curves, other.curves):
             for myCurve, yourCurve in zip(myCurves, yourCurves):
-                diffX = sum([abs(matched[0] - matched[1]) for matched in 
+                diffX += sum([abs(matched[0] - matched[1]) for matched in 
                     zip(myCurve.fourierX[1:], yourCurve.fourierX[1:])]) # Don't include the offset coeff
-                diffY = sum([abs(matched[0] - matched[1]) for matched in 
+                diffY += sum([abs(matched[0] - matched[1]) for matched in 
                     zip(myCurve.fourierY[1:], yourCurve.fourierY[1:])]) 
-                return diffX + diffY # Don't think the paper specifies if this should be an average
-                                     # or anything else.
+        return diffX + diffY # Don't think the paper specifies if this should be an average
+                             # or anything else.
 
 def partition(list, predicate):
     yes, no = [], []
@@ -275,23 +277,23 @@ class FourierComparison(FeatureExtractor):
             raise Exception("The image has not been correctly prepared")
     	
     def broaden(self, image):
-        print 'broadening'
+        #print 'broadening'
     	dst = cv.CreateImage((image.width, image.height), 8, 1)
     	cv.Copy(image, dst)
     	keepGoing = True
     	while keepGoing:
-    	   print 'looping'
+    	   #print 'looping'
     	   keepGoing = False
     	   for row in range(image.height-1):
     	       for col in range(image.width-1):
     	           for i in range(2):
     	               blackWhite = [0, 255]
     	               if dst[row, col] == blackWhite[i] == dst[row+1, col+1] and dst[row+1, col] == blackWhite[(i+1)%2] == dst[row, col+1]:
-    	                   print 'blackening'
+    	                   #print 'blackening'
     	                   dst[row, col] = 0
     	                   dst[row+1, col] = 0
     	                   keepGoing = True
-        print 'broadened'
+        #print 'broadened'
     	return dst
     
     def extract(self, image):
@@ -300,7 +302,7 @@ class FourierComparison(FeatureExtractor):
         data = [FourierComparison.Curve(curve) for curve in contours]
         data = [curve for curve in data if curve.area > AREA_THRESHOLD]
         curveKinds = partition(data, lambda curve: curve.area > 0)
-        displacement = minusTuples(self.averageCentroid(positive), self.averageCentroid(negative))
+        displacement = minusTuples(self.averageCentroid(curveKinds[0]), self.averageCentroid(curveKinds[1]))
         curveAggregate = []
         for kind in curveKinds:
             ordinals = self.sortOrdinals(kind, (image.width, image.height))
