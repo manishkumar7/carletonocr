@@ -43,6 +43,8 @@ class knnMatcher(Matcher):
             heapq.heappush(best, similarity)
         for character, features in self.library[self.k:]:
             similarity = inputIm.similarity(features)
+            print "Comparing against %s" % character
+            print "Similarity = %s" % similarity
             if similarity > best[0][0]:
                 heapq.heappop(best)
                 heapq.heappush(best, (similarity, character))

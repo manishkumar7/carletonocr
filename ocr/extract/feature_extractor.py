@@ -1,4 +1,5 @@
 import cv
+import operator
 import numpy
 import math
 
@@ -196,8 +197,17 @@ def averagePoint(data):
         sumY += point[1]
     return (sumX/len(data), sumY/len(data))
     
-def addTuples(tup1, tup2):
-	return tuple(t1+t2 for (t1, t2) in zip(tup1, tup2))
+#def addTuples(tup1, tup2):
+#	return tuple(t1+t2 for (t1, t2) in zip(tup1, tup2))
+
+#def addTuples(A, B):
+#    out = []
+#    for i in xrange(len(A)):
+#        out.append(A[i] + B[i])
+#    return tuple(out)
+
+def addTuples(A, B):
+    return tuple(map(operator.add, A, B))
 	
 def negTuple(tup):
     return tuple(-t for t in tup)
