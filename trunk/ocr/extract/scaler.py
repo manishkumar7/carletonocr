@@ -1,4 +1,5 @@
 import cv
+from ocr.binarize import SimpleBinarizer
 
 class Scaler(object):
     def __init__(self, dimension):
@@ -25,5 +26,7 @@ class ProportionalScaler(Scaler):
         cv.GetAffineTransform([(0, 0), (image.height, 0), (0, image.width)], [(0, 0), (targetHeight, 0), (0, targetWidth)], matrix)
         #print "The transform is", matrix
         cv.WarpAffine(image, scaled, matrix, fillval=255)
-        return scaled 
+        tmp = SimpleBinarizer()
+        return tmp.binarize(scaled) # A workaround,
+        # the FD code gets angry at greyscale images
 
