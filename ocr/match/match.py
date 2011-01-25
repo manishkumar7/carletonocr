@@ -39,11 +39,15 @@ class knnMatcher(Matcher):
         for character, features in self.library[:self.k]:
             similarity = (inputIm.similarity(features), character) 
             print "Comparing against %s" % character
+            if character == '.':
+                print '**************look here*****************'
             print "Similarity = %s" % similarity[0]
             heapq.heappush(best, similarity)
         for character, features in self.library[self.k:]:
             similarity = inputIm.similarity(features)
             print "Comparing against %s" % character
+            if character == '.':
+                print '****************look here***************'
             print "Similarity = %s" % similarity
             if similarity > best[0][0]:
                 heapq.heappop(best)
@@ -51,6 +55,7 @@ class knnMatcher(Matcher):
         voteDict = {}
         for similarity, character in best:
             voteDict[character] = voteDict.get(character, 0) + similarity
+        print '-------------' + str(self.k) + '------------------'
         return voteDict.items()
 
 #A neural network matcher might also be nice

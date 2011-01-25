@@ -70,6 +70,7 @@ class Options: pass
 defaultOptions = Options()
 defaultOptions.spaceWidth = .4
 defaultOptions.library = "/Accounts/courses/comps/text_recognition/300/all/"
+#defaultOptions.library = "/Accounts/courses/comps/text_recognition/300/NRTSingle/"
 #defaultOptions.library = "text_recognition/300/all/"
 defaultOptions.dimension = 100
 defaultOptions.k = 1
