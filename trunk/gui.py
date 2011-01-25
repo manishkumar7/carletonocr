@@ -3,6 +3,7 @@ import wx.aui
 import os
 import ocr
 import copy
+import random
 
 class OCRWindow(object):
 
@@ -139,9 +140,11 @@ class OCRWindow(object):
 
     def __init__(self):
         self.options = copy.copy(ocr.defaultOptions)
-        self.options.saveBinarized = '/tmp/binarized.png'
-        self.options.saveSegmented = '/tmp/segmented.png'
-        self.options.saveTypeset = '/tmp/typeset.png'
+        def name():
+        	return '/tmp/'+str(random.randint(1000, 1000000))+'.png'
+        self.options.saveBinarized = name()
+        self.options.saveSegmented = name()
+        self.options.saveTypeset = name()
         self.options.target = None
         self.app = wx.PySimpleApp()
         frame = wx.Frame(None, title="Optical Character Recognition", size=(1200, 700))

@@ -1,3 +1,7 @@
+'''
+Command-line interface for optical character recognition system
+'''
+
 import optparse
 import ocr
 from ocr import defaultOptions, classMap
