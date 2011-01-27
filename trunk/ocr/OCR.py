@@ -13,7 +13,7 @@ class OCR:
         self.matcher = matcher
         self.linguist = linguist
         
-    def recognize(self, saveBinarized, saveSegmented, saveTypeset, saveMatcher):
+    def recognize(self, saveBinarized, saveSegmented, saveTypeset, saveFeatures, saveMatcher):
         blackAndWhite = self.binarizer.binarize(self.image)
         if saveBinarized != None:
             cv.SaveImage(saveBinarized, blackAndWhite)
@@ -26,6 +26,9 @@ class OCR:
             typesetVisual = self.typesetter.showTypesetting(pieces)
             cv.SaveImage(saveTypeset, typesetVisual)
         possibilities = self.matcher.match(pieces)
+        if saveFeatures != None:
+            featuresVisual = self.matcher.visualizeFeatures()
+            cv.SaveImage(saveFeatures, featuresVisual)
         if saveMatcher != None:
             matcherOutput = file(saveMatcher, "w")
             matcherOutput.write(str(possibilities))
@@ -44,7 +47,7 @@ def useOptions(options):
     linguist = options.linguist()
     matcher = match.knnMatcher(library, scaler, featureExtractor, options.k)
     recognizer = OCR(im, binarizer, segmenter, typesetter, matcher, linguist)
-    string = recognizer.recognize(options.saveBinarized, options.saveSegmented, options.saveTypeset, options.saveMatcher)
+    string = recognizer.recognize(options.saveBinarized, options.saveSegmented, options.saveTypeset, options.saveFeatures, options.saveMatcher)
     return string
 
 classMap = {
@@ -83,6 +86,7 @@ defaultOptions.linguist = 'null'
 defaultOptions.saveBinarized = None
 defaultOptions.saveSegmented = None
 defaultOptions.saveTypeset = None
+defaultOptions.saveFeatures = None
 defaultOptions.saveMatcher = None
 
 def processOptions(options, parser=None):

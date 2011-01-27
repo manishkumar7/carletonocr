@@ -39,8 +39,9 @@ def getOptions():
     addClassOption('--linguist', 'linguist', "Linguistic correction policy")
 
     addOption('--save-binarized', 'saveBinarized', 'Set this to a path to save the binarized image to a particular location')
-    addOption('--save-segmented', 'saveSegmented', 'Set this to a path to save the segmented image to a particular location')
-    addOption('--save-typeset', 'saveTypeset', 'Set this to a path to save the segmented image to a particular location')
+    addOption('--save-segmented', 'saveSegmented', 'Set this to a path to save the segmented image to a particular location')    
+    addOption('--save-typeset', 'saveTypeset', 'Set this to a path to save the typeset image to a particular location')
+    addOption('--save-features', 'saveFeatures', 'Set this to a path to save the features image to a particular location')
     addOption('--save-matcher', 'saveMatcher', 'Set this to a path to save the matched image to a particular location')
 
     (options, args) = parser.parse_args()

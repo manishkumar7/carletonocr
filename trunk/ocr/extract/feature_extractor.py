@@ -68,14 +68,47 @@ class ImageTranspose(object):
     def __getitem__(self, index):
         return self.image[index[1], index[0]]
 
-def VerticalHistogram(image):
-    return HorizontalHistogram(ImageTranspose(image))
-
 class HorizontalHistogram(Features):
     def __init__(self, image):
+        self.size = (image.width, image.height)
         self.histogram = [sum(((image[row, col] == 0 and 1) or 0) for col in range(image.width)) for row in range(image.height)]
     def similarity(self, other):
         return 1.0/(sum(abs(mine-yours) for (mine, yours) in zip(self.histogram, other.histogram))+1)
+    def visualize(self):
+        '''
+        startHist, stopHist, i = 0, 0, 0
+        while i < len(self.histogram):
+            if self.histogram[i] != 0:
+                startHist = i
+                break
+            i += 1
+        i = len(self.histogram)-1
+        while i > 0:
+            if self.histogram[i] != 0:
+                stopHist = i
+                break
+            i -= 1
+        reducedHist = self.histogram[startHist:stopHist+1]
+        '''
+        vis = cv.CreateImage(self.size, 8, 3)
+        cv.Rectangle(vis, (0,0), self.size, cv.RGB(255, 255, 255), -1)        
+        for i in range(len(self.histogram)):
+            for j in range(self.histogram[i]):
+                vis [i,j] = (0,0,255)
+        return vis
+
+class VerticalHistogram(HorizontalHistogram):
+    def __init__(self, image):
+        image = ImageTranspose(image)
+        self.histogram = [sum(((image[row, col] == 0 and 1) or 0) for col in range(image.width)) for row in range(image.height)]
+        self.size = (image.width, image.height)
+    def visualize(self):
+        vis = cv.CreateImage(self.size, 8, 3)
+        cv.Rectangle(vis, (0,0), self.size, cv.RGB(255, 255, 255), -1)        
+        for i in range(len(self.histogram)):
+            for j in range(self.histogram[i]):
+                vis [j,i] = (255,0,0)
+        return vis
 
 class VerticalAndHorizontalHistogram(Features):
     def __init__(self, image):
@@ -84,6 +117,16 @@ class VerticalAndHorizontalHistogram(Features):
     def similarity(self, other):
         return self.verticalHistogram.similarity(other.verticalHistogram) \
             + self.horizontalHistogram.similarity(other.horizontalHistogram)
+    def visualize(self):
+        vis = self.horizontalHistogram.visualize()
+        for i in range(len(self.verticalHistogram.histogram)):
+            for j in range(self.verticalHistogram.histogram[i]):
+                if vis [j,i] != (255,255,255):
+                    vis[j,i] = (255,40,200)
+                else:
+                    vis[j,i] = (255,0,0)
+        return vis
+        
 
 class HistogramComparison(FeatureExtractor):
     def extract(self, image):
@@ -200,7 +243,7 @@ def averagePoint(data):
     return (sumX/len(data), sumY/len(data))
     
 #def addTuples(tup1, tup2):
-#	return tuple(t1+t2 for (t1, t2) in zip(tup1, tup2))
+#   return tuple(t1+t2 for (t1, t2) in zip(tup1, tup2))
 
 #def addTuples(A, B):
 #    out = []
@@ -210,7 +253,7 @@ def averagePoint(data):
 
 def addTuples(A, B):
     return tuple(map(operator.add, A, B))
-	
+    
 def negTuple(tup):
     return tuple(-t for t in tup)
 
@@ -252,62 +295,62 @@ class FourierComparison(FeatureExtractor):
             vertex = unvisited.pop()
             direction = self.direction(image, vertex)
             if direction != (0, 0):
-            	contour = [vertex]
-            	#print 'starting a new contour'
-            	while len(unvisited) > 0 and addTuples(vertex, direction) in unvisited:
-            		vertex = addTuples(vertex, direction)
-            		#print 'adding', vertex
-            		contour.append(vertex)
-            		unvisited.remove(vertex)
-            		direction = self.direction(image, vertex)
-            		#print "The direction is", direction
+                contour = [vertex]
+                #print 'starting a new contour'
+                while len(unvisited) > 0 and addTuples(vertex, direction) in unvisited:
+                    vertex = addTuples(vertex, direction)
+                    #print 'adding', vertex
+                    contour.append(vertex)
+                    unvisited.remove(vertex)
+                    direction = self.direction(image, vertex)
+                    #print "The direction is", direction
                 #print contour
-            	assert addTuples(contour[-1],direction) == contour[0]
-            	contours.append(contour)
+                assert addTuples(contour[-1],direction) == contour[0]
+                contours.append(contour)
         return contours
     
     def direction(self, image, vertex):
-    	#print 'finding the direction from', vertex
-    	offsets = [(0, 0), (-1, 0), (-1, -1), (0, -1)]
-    	direction = [(0, 1), (-1, 0), (0, -1), (1, 0)]
-    	def lookup(i):
-    	    coordinate = addTuples(vertex, offsets[i % len(offsets)])
-    	    if coordinate[0] < 0 or coordinate[1] < 0 or coordinate[0] >= image.height or coordinate[1] >= image.width:
-    	        return 255
-    	    return image[coordinate]
-    	for i in range(4):
-    		v = addTuples(vertex, offsets[i])
-    		#print 'at pixel', v, 'the pixel is', lookup(i)
-    	candidates = [d for i, d in zip(range(len(offsets)), direction) if lookup(i) == 255 and lookup(i+1) == 0]
-    	if len(candidates) == 0:
-    		return (0, 0)
-    	elif len(candidates) == 1:
-    		return candidates[0]
-    	else:
+        #print 'finding the direction from', vertex
+        offsets = [(0, 0), (-1, 0), (-1, -1), (0, -1)]
+        direction = [(0, 1), (-1, 0), (0, -1), (1, 0)]
+        def lookup(i):
+            coordinate = addTuples(vertex, offsets[i % len(offsets)])
+            if coordinate[0] < 0 or coordinate[1] < 0 or coordinate[0] >= image.height or coordinate[1] >= image.width:
+                return 255
+            return image[coordinate]
+        for i in range(4):
+            v = addTuples(vertex, offsets[i])
+            #print 'at pixel', v, 'the pixel is', lookup(i)
+        candidates = [d for i, d in zip(range(len(offsets)), direction) if lookup(i) == 255 and lookup(i+1) == 0]
+        if len(candidates) == 0:
+            return (0, 0)
+        elif len(candidates) == 1:
+            return candidates[0]
+        else:
             print 'dim', image.width, image.height
             print 'vertex', vertex
             print 'values', [(lookup(i), offsets[i]) for i in range(4)]
             raise Exception("The image has not been correctly prepared")
-    	
+        
     def broaden(self, image):
         #print 'broadening'
-    	dst = cv.CreateImage((image.width, image.height), 8, 1)
-    	cv.Copy(image, dst)
-    	keepGoing = True
-    	while keepGoing:
-    	   #print 'looping'
-    	   keepGoing = False
-    	   for row in range(image.height-1):
-    	       for col in range(image.width-1):
-    	           for i in range(2):
-    	               blackWhite = [0, 255]
-    	               if dst[row, col] == blackWhite[i] == dst[row+1, col+1] and dst[row+1, col] == blackWhite[(i+1)%2] == dst[row, col+1]:
-    	                   #print 'blackening'
-    	                   dst[row, col] = 0
-    	                   dst[row+1, col] = 0
-    	                   keepGoing = True
+        dst = cv.CreateImage((image.width, image.height), 8, 1)
+        cv.Copy(image, dst)
+        keepGoing = True
+        while keepGoing:
+           #print 'looping'
+           keepGoing = False
+           for row in range(image.height-1):
+               for col in range(image.width-1):
+                   for i in range(2):
+                       blackWhite = [0, 255]
+                       if dst[row, col] == blackWhite[i] == dst[row+1, col+1] and dst[row+1, col] == blackWhite[(i+1)%2] == dst[row, col+1]:
+                           #print 'blackening'
+                           dst[row, col] = 0
+                           dst[row+1, col] = 0
+                           keepGoing = True
         #print 'broadened'
-    	return dst
+        return dst
     
     def extract(self, image):
         image = self.broaden(image)
