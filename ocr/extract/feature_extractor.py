@@ -97,7 +97,7 @@ class HorizontalHistogramComparison(FeatureExtractor):
     def extract(self, image):
         return HorizontalHistogram(image)
 
-FOURIER_POINTS = 256
+FOURIER_POINTS = 8
 TOLERANCE = .1
 AREA_THRESHOLD = 4
 CENTROID_THRESHOLD = 0
@@ -123,6 +123,8 @@ class FourierDescriptor(Features):
         def __init__(self, ordinal, offset, points):
             self.ordinal = ordinal
             self.offset = offset
+            print "I am a curve and my offset is", offset, "and my ordinal is", ordinal
+            self.points = points
             self.fourierX = self.fourier(points, 0)
             self.fourierY = self.fourier(points, 1)
 
@@ -161,8 +163,8 @@ class FourierDescriptor(Features):
                     sum += difference
                     if difference > 0: count += 1
             if count > CENTROID_THRESHOLD:
-                return sum + 10000
-            return 1.0/(self.fourierDistance(other)+1) + 100000
+                return sum + 100
+            return 1.0/(self.fourierDistance(other)+1) + 500
         else:
             return 0
 
@@ -221,6 +223,7 @@ class FourierComparison(FeatureExtractor):
             self.points = points
             self.centroid = averagePoint(points)
             self.area = cv.ContourArea(points)
+            print "I am the other type of curve and my centroid is", self.centroid, "and my area is ", self.area
  
     def averageCentroid(self, data):
         if data:
@@ -238,7 +241,7 @@ class FourierComparison(FeatureExtractor):
         ordinalOffset = 0
         for ordinal in range(len(sortedOrds)):
             output[sortedOrds[ordinal][0]][0][coord] = ordinal-ordinalOffset
-            if ordinal+1 < len(sortedOrds) and (sortedOrds[ordinal][1].centroid[coord] - sortedOrds[ordinal+1][1].centroid[coord]) / imgDim[coord] < TOLERANCE:
+            if ordinal+1 < len(sortedOrds) and float(sortedOrds[ordinal+1][1].centroid[coord] - sortedOrds[ordinal][1].centroid[coord]) / imgDim[coord] < TOLERANCE:
                 ordinalOffset += 1
         return output
 

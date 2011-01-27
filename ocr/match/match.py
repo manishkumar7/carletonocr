@@ -52,6 +52,7 @@ class knnMatcher(Matcher):
             if similarity > best[0][0]:
                 heapq.heappop(best)
                 heapq.heappush(best, (similarity, character))
+        print best
         voteDict = {}
         for similarity, character in best:
             voteDict[character] = voteDict.get(character, 0) + similarity
