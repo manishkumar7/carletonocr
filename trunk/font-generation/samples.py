@@ -52,7 +52,8 @@ def generateImage(word,directory,font):
 
     draw.text((0,0), word, font=font)
     im = trim(im, "white")
-    filename = word.replace(' ','_') + '.png'
+    filename = word.replace(' ','_')
+    filename = filename[:16] + '.png'
     try:
     	im.save(directory + filename)
     except KeyError:
