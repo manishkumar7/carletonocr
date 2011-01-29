@@ -265,7 +265,7 @@ class FourierComparison(FeatureExtractor):
         def __init__(self, points):
             self.points = points
             self.centroid = averagePoint(points)
-            self.area = cv.ContourArea(points)
+            self.area = contourArea(points)
             print "I am the other type of curve and my centroid is", self.centroid, "and my area is ", self.area
  
     def averageCentroid(self, data):
@@ -287,7 +287,15 @@ class FourierComparison(FeatureExtractor):
             if ordinal+1 < len(sortedOrds) and float(sortedOrds[ordinal+1][1].centroid[coord] - sortedOrds[ordinal][1].centroid[coord]) / imgDim[coord] < TOLERANCE:
                 ordinalOffset += 1
         return output
-
+    
+    #See http://en.wikipedia.org/wiki/Polygonal_area#Area_and_centroid
+    #Assumes non-self-intersecting contours, which I think is safe
+    def contourArea(self, points):
+        area = 0
+        for i in range(len(points)-1):
+            area += points[i][0]*points[i+1][1]-points[i+1][0]*points[i][1]
+        return .5 * area
+                        
     def contours(self, image):
         unvisited = set((row, col) for col in range(image.width+1) for row in range(image.height+1))
         contours = []
