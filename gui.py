@@ -7,15 +7,14 @@ import random
 
 class OCRWindow(object):
 
-    def beside(self, parent, sizer, contents, expandLeft=True):
+    def beside(self, parent, sizer, contents, expandLeft=True, expandRight=True):
         panel = wx.Panel(parent=parent)
         left, right = contents(panel)
         innerSizer = wx.BoxSizer(wx.HORIZONTAL)
-        if expandLeft:
-            innerSizer.Add(left, 1, wx.EXPAND)
-        else:
-            innerSizer.Add(left)
-        innerSizer.Add(right, 1, wx.EXPAND)
+        def addExpanding(contents, expand):
+            innerSizer.Add(contents, 1 if expand else 0, wx.EXPAND)
+        addExpanding(left, expandLeft)
+        addExpanding(right, expandRight)
         panel.SetSizer(innerSizer)
         if sizer is not None: sizer.Add(panel, 0, wx.EXPAND)
         return panel
@@ -37,11 +36,20 @@ class OCRWindow(object):
             optionsSizer.Add(updateButton, flag=wx.ALIGN_RIGHT)
             options.SetSizer(optionsSizer)
             return textPanel, options
-        return self.beside(notebook, None, contents)
+        return self.beside(notebook, None, contents, expandRight=False)
 
     def replaceImage(self, panel, path):
         panel.DestroyChildren()
-        wx.StaticBitmap(panel).SetBitmap(wx.Image(path).ConvertToBitmap())
+        frameWidth, frameHeight = panel.GetClientSizeTuple()
+        image = wx.Image(path) 
+        imageWidth, imageHeight = image.GetSize().Get()
+        if float(imageWidth)/imageHeight > float(frameWidth)/frameHeight:
+            newWidth = frameWidth
+            newHeight = int(imageHeight * (float(frameWidth) / imageWidth))
+        else:
+            newHeight = frameHeight
+            newWidth = int(imageWidth * (float(frameHeight) / imageHeight))
+        wx.StaticBitmap(panel).SetBitmap(image.Rescale(newWidth, newHeight).ConvertToBitmap())
 
     def replaceText(self, panel, text):
         panel.DestroyChildren()
