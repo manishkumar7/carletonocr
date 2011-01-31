@@ -23,13 +23,17 @@ class TemplateImage(Features):
                         n11 += 1
                     elif template == 0:
                         n10 += 1
+                    else:
+                        raise Exception("Why is there a pixel with value " + str(pair[0]))
                 elif input == 0:
                     if template == 255:
                         n01 += 1
                     elif template == 0:
                         n00 += 1
-                #else:
-                    #raise Exception("Why is there a pixel with value " + str(pair[0]))
+                    else:
+                        raise Exception("Why is there a pixel with value " + str(pair[0]))
+                else:
+                    raise Exception("Why is there a pixel with value " + str(pair[0]))
         return self.formula(n00, n01, n10, n11)
     def visualize(self):
         vis = cv.CreateImage((self.image.width, self.image.height), 8, 3)
