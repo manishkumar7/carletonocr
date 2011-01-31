@@ -1,12 +1,13 @@
 import cv
 import heapq
 
-class Matcher:
-    def __init__(self, library, scaler, featureExtractor):
+class knnMatcher(object):
+    def __init__(self, library, scaler, featureExtractor, k):
+        self.k = k
         self.library = library
         self.featureExtractor = featureExtractor
         self.scaler = scaler
-    
+
     def match(self,characterPieces):
         output = []
         self.inputVisList = []
@@ -23,7 +24,7 @@ class Matcher:
                 self.inputVisList.append(features.visualize())
                 output.append(newChar)
         return output
-        
+
     def bestGuess(self, features):
         '''Finds the best match for 'inputIm' in the library and returns it'''
         best = (self.library[0][0], features.similarity(self.library[0][1]))
@@ -32,7 +33,7 @@ class Matcher:
             if pDist > best[1]:
                 best = (template[0], pDist)
         return [best]
-        
+
     def visualizeFeatures(self):
         pieces = self.scaledPieces
         inputVis = self.inputVisList
@@ -85,11 +86,6 @@ class Matcher:
                 x += (int(spaceWidth) + chr.width)
                 curVisInd += 1
         return featuresVisual
-
-class knnMatcher(Matcher):
-    def __init__(self, library, scaler, featureExtractor, k):
-        self.k = k
-        Matcher.__init__(self, library, scaler, featureExtractor)
 
     def bestGuess(self, inputIm):
         '''Finds the best match according to '.similarity()' and returns it'''
