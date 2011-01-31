@@ -1,1 +1,1 @@
-from match import Matcher, knnMatcher
+from match import knnMatcher
