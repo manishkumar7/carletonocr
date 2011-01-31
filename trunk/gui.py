@@ -5,6 +5,8 @@ import ocr
 import copy
 import random
 
+PADDING_WIDTH = 4
+
 class OCRWindow(object):
 
     def beside(self, parent, sizer, contents, expandLeft=True, expandRight=True):
@@ -32,9 +34,20 @@ class OCRWindow(object):
             newWidth = int(imageWidth * (float(frameHeight) / imageHeight))
         wx.StaticBitmap(panel).SetBitmap(image.Rescale(newWidth, newHeight).ConvertToBitmap())
 
-    def replaceText(self, panel, text):
+    def replaceText(self, panel, text, huge=False):
         panel.DestroyChildren()
-        wx.StaticText(parent=panel, label=text)
+        hSizer = wx.BoxSizer(wx.HORIZONTAL)
+        hSizer.AddSpacer(PADDING_WIDTH)
+        vPanel = wx.Panel(parent=panel)
+        vSizer = wx.BoxSizer(wx.VERTICAL)
+        vSizer.AddSpacer(PADDING_WIDTH)
+        text = wx.StaticText(parent=vPanel, label=text)
+        if huge:
+            text.SetFont(wx.Font(70, wx.DEFAULT, wx.NORMAL, wx.BOLD))
+        vSizer.Add(text, 1, wx.EXPAND)
+        vPanel.SetSizer(vSizer)
+        hSizer.Add(vPanel, 1, wx.EXPAND)
+        panel.SetSizer(hSizer)
 
     def chooseFile(self, parent, sizer, attr, defaultLabel, prompt, callback=lambda: None):
         def contents(panel):
@@ -51,6 +64,7 @@ class OCRWindow(object):
                 dialog.Destroy()
             self.app.Bind(wx.EVT_BUTTON, chooseFile, button)
             return button, namePanel
+        sizer.AddSpacer(PADDING_WIDTH)
         self.beside(parent, sizer, contents, expandLeft=False)
 
     def besideLabel(self, parent, sizer, name, right):
@@ -58,6 +72,7 @@ class OCRWindow(object):
             label = wx.StaticText(panel, label=name+": ")
             control = right(panel)
             return label, control
+        sizer.AddSpacer(PADDING_WIDTH)
         self.beside(parent, sizer, contents)
 
     def dropdown(self, parent, sizer, name, attr):
@@ -100,15 +115,21 @@ class OCRWindow(object):
         for attr, name in tabParameters:
             textPanel = wx.Panel(parent=notebook)
             setattr(self, attr, textPanel)
-            text = wx.StaticText(parent=textPanel, label="No image loaded for %s" % attr)
+            self.replaceText(textPanel, "No image loaded for %s" % attr)
             notebook.AddPage(textPanel, name)
+        def redraw(*args):
+            if self.options.target is not None:
+                self.redrawPictures()
+        notebook.Bind(wx.EVT_SIZE, redraw)
         return notebook
 
     def optionWidgets(self, parent):
-        frame = wx.Panel(parent=parent, style=wx.SUNKEN_BORDER)
+        outerFrame = wx.Panel(parent=parent, style=wx.SUNKEN_BORDER)
+        outerSizer = wx.BoxSizer(wx.HORIZONTAL)
+        outerSizer.AddSpacer(PADDING_WIDTH)
+        frame = wx.Panel(parent=outerFrame)
         sizer = wx.BoxSizer(wx.VERTICAL)
         def updateFile():
-            print 'called it'
             self.replaceImage(self.image, self.options.target)
         self.chooseFile(frame, sizer, "target", "No file loaded", "Choose file", callback=updateFile)
         self.chooseFile(frame, sizer, "library", self.options.library, "Choose library path")
@@ -119,22 +140,26 @@ class OCRWindow(object):
         self.dropdown(frame, sizer, 'Feature extractor', 'featureExtractor')
         self.entry(frame, sizer, 'k nearest neighbors', 'k', int)
         self.dropdown(frame, sizer, 'Linguist', 'linguist')
-        spacer = wx.Panel(frame)
-        sizer.Add(spacer, 1, flag=wx.EXPAND)
+        sizer.AddStretchSpacer()
         updateButton = wx.Button(parent=frame, label="Update")
         def doUpdate(*args):
             self.update()
         self.app.Bind(wx.EVT_BUTTON, doUpdate, updateButton)
         sizer.Add(updateButton, flag=wx.ALIGN_RIGHT)
+        sizer.AddSpacer(PADDING_WIDTH)
         frame.SetSizer(sizer)
-        return frame
-    
+        outerSizer.Add(frame, 1, wx.EXPAND)
+        outerSizer.AddSpacer(PADDING_WIDTH)
+        outerFrame.SetSizer(outerSizer)
+        return outerFrame
+
     def mainView(self, frame):
         def contents(parent):
             return self.imageTabs(parent), self.optionWidgets(parent)
         self.beside(frame, None, contents, expandRight=False)
 
     def __init__(self):
+        self.hasBeenRun = False
         self.options = copy.copy(ocr.defaultOptions)
         def name():
         	return '/tmp/'+str(random.randint(1000, 1000000))+'.png'
@@ -143,22 +168,27 @@ class OCRWindow(object):
         self.options.saveTypeset = name()
         self.options.saveFeatures = name()
         self.options.target = None
-        self.app = wx.PySimpleApp()
-        frame = wx.Frame(None, title="Optical Character Recognition", size=(1200, 700))
+        self.app = wx.App()
+        frame = wx.Frame(None, title="Optical Character Recognition", size=(1500, 700))
         self.mainView(frame)
         frame.Show()
         self.app.MainLoop()
 
     def update(self):
         if self.options.target is not None:
-            self.replaceImage(self.image, self.options.target)
             text = ocr.useOptions(ocr.processOptions(self.options))
+            self.hasBeenRun = True
+            self.redrawPictures()
+            self.replaceText(self.matched, "Matcher visualization not yet implemented")
+            self.replaceText(self.output, text, huge=True)
+
+    def redrawPictures(self):
+        self.replaceImage(self.image, self.options.target)
+        if self.hasBeenRun:
             self.replaceImage(self.binarized, self.options.saveBinarized)
             self.replaceImage(self.segmented, self.options.saveSegmented)
             self.replaceImage(self.typesetter, self.options.saveTypeset)
             self.replaceImage(self.features, self.options.saveFeatures)
-            self.replaceText(self.matched, "Matcher visualization not yet implemented")
-            self.replaceText(self.output, text)
 
 if __name__ == '__main__':
     OCRWindow()
