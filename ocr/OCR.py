@@ -5,14 +5,16 @@ import binarize, extract, linguistics, match, typeset, segment
 import copy
 
 class OCR:
-    def __init__(self, image, binarizer, segmenter, typesetter, matcher, linguist):
+    def __init__(self, image, binarizer, segmenter, typesetter, scaler, featureExtractor, matcher, linguist):
         self.image = image
         self.binarizer = binarizer
         self.segmenter = segmenter
         self.typesetter = typesetter
+        self.scaler = scaler
+        self.featureExtractor = featureExtractor
         self.matcher = matcher
         self.linguist = linguist
-        
+
     def recognize(self, saveBinarized, saveSegmented, saveTypeset, saveFeatures, saveMatcher):
         blackAndWhite = self.binarizer.binarize(self.image)
         if saveBinarized != None:
@@ -25,10 +27,19 @@ class OCR:
         if saveTypeset != None:
             typesetVisual = self.typesetter.showTypesetting(pieces)
             cv.SaveImage(saveTypeset, typesetVisual)
-        possibilities = self.matcher.match(pieces)
+        def toNonString(fn):
+            def do(piece):
+                if isinstance(piece, str):
+                    return piece
+                else:
+                    return fn(piece)
+            return do
+        scaled = map(toNonString(self.scaler.scale), pieces)
+        features = map(toNonString(self.featureExtractor.extract), scaled)
         if saveFeatures != None:
-            featuresVisual = self.matcher.visualizeFeatures()
+            featuresVisual = extract.visualizeFeatures(scaled, features)
             cv.SaveImage(saveFeatures, featuresVisual)
+        possibilities = map(toNonString(self.matcher.bestGuess), features)
         if saveMatcher != None:
             matcherOutput = file(saveMatcher, "w")
             matcherOutput.write(str(possibilities))
@@ -45,8 +56,8 @@ def useOptions(options):
     scaler = options.scaler(options.dimension)
     library = extract.buildLibrary(options.library, binarizer, scaler, segmenter, featureExtractor)
     linguist = options.linguist()
-    matcher = match.knnMatcher(library, scaler, featureExtractor, options.k)
-    recognizer = OCR(im, binarizer, segmenter, typesetter, matcher, linguist)
+    matcher = match.knnMatcher(library, options.k)
+    recognizer = OCR(im, binarizer, segmenter, typesetter, scaler, featureExtractor, matcher, linguist)
     string = recognizer.recognize(options.saveBinarized, options.saveSegmented, options.saveTypeset, options.saveFeatures, options.saveMatcher)
     return string
 
