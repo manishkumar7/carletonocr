@@ -4,12 +4,12 @@ Command-line interface for optical character recognition system
 
 import optparse
 import ocr
-from ocr import defaultOptions, classMap
+import sys
 
 def main():
     options, parser = getOptions()
     options = ocr.processOptions(options, parser)
-    print ocr.useOptions(options)
+    print ocr.OCRRunner().withOptions(options)
 
 
 def getOptions():
@@ -19,10 +19,10 @@ def getOptions():
     """
 
     def addOption(name, attr, help, type="string"):
-        parser.add_option(name, action="store", dest=attr, default=getattr(defaultOptions, attr), help=help, type=type)
+        parser.add_option(name, action="store", dest=attr, default=getattr(ocr.defaultOptions, attr), help=help, type=type)
 
     def addClassOption(name, attr, desc):
-        addOption(name, attr, help="%s. Options: %s. Default: %s" % (desc, ', '.join(classMap[attr].keys()), getattr(defaultOptions, attr)))
+        addOption(name, attr, help="%s. Options: %s. Default: %s" % (desc, ', '.join(ocr.classMap[attr].keys()), getattr(ocr.defaultOptions, attr)))
 
     parser = optparse.OptionParser(usage="usage: %prog [options] image", version="%prog 0.1")
 
@@ -44,6 +44,8 @@ def getOptions():
     addOption('--save-features', 'saveFeatures', 'Set this to a path to save the features image to a particular location')
     addOption('--save-matcher', 'saveMatcher', 'Set this to a path to save the matched image to a particular location')
 
+    parser.add_option('--verbose', action="store_true", dest='showStatus', help='Enable verbose output')
+
     (options, args) = parser.parse_args()
 
     # Assure the right number of positional arguments
@@ -53,6 +55,12 @@ def getOptions():
 	parser.error("Multiple images specified. Please specify only one.")
 
     options.target = args[0]
+
+    if options.showStatus:
+        options.showStatus = lambda status: sys.stderr.write(status + "\n")
+    else:
+        options.showStatus = ocr.defaultOptions.showStatus
+
     return options, parser
 
 if __name__ == "__main__":
