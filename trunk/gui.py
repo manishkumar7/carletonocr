@@ -4,6 +4,7 @@ import os
 import ocr
 import copy
 import random
+import threading
 
 PADDING_WIDTH = 4
 
@@ -173,18 +174,27 @@ class OCRWindow(object):
         self.app = wx.App()
         frame = wx.Frame(None, title="Optical Character Recognition", size=(1500, 700))
         frame.CreateStatusBar()
-        self.options.showStatus = frame.SetStatusText
+        def setStatus(status):
+            wx.CallAfter(frame.SetStatusText, status)
+        self.options.showStatus = setStatus
         self.mainView(frame)
         frame.Show()
         self.app.MainLoop()
 
     def update(self):
         if self.options.target is not None:
-            text = self.runner.withOptions(ocr.processOptions(self.options))
-            self.hasBeenRun = True
-            self.redrawPictures()
-            self.replaceText(self.matched, "Matcher visualization not yet implemented")
-            self.replaceText(self.output, text, huge=True)
+            thread = threading.Thread(target=self.runThread)
+            thread.start()
+
+    def runThread(self):
+        text = self.runner.withOptions(ocr.processOptions(self.options))
+        wx.CallAfter(self.updateComplete, text)
+
+    def updateComplete(self, text):
+        self.hasBeenRun = True
+        self.redrawPictures()
+        self.replaceText(self.matched, "Matcher visualization not yet implemented")
+        self.replaceText(self.output, text, huge=True)
 
     def redrawPictures(self):
         self.replaceImage(self.image, self.options.target)
