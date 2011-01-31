@@ -4,62 +4,114 @@ from nltk.corpus import brown
 import binarize, extract, linguistics, match, typeset, segment
 import copy
 
-class OCR:
-    def __init__(self, image, binarizer, segmenter, typesetter, scaler, featureExtractor, matcher, linguist):
-        self.image = image
-        self.binarizer = binarizer
-        self.segmenter = segmenter
-        self.typesetter = typesetter
-        self.scaler = scaler
-        self.featureExtractor = featureExtractor
-        self.matcher = matcher
-        self.linguist = linguist
+class OCRRunner:
+    def __init__(self):
+        self.options = None
 
-    def recognize(self, saveBinarized, saveSegmented, saveTypeset, saveFeatures, saveMatcher):
-        blackAndWhite = self.binarizer.binarize(self.image)
-        if saveBinarized != None:
-            cv.SaveImage(saveBinarized, blackAndWhite)
-        characterPieces = self.segmenter.segment(blackAndWhite)
-        if saveSegmented != None:
-			segVisual = self.segmenter.showSegments(blackAndWhite, characterPieces)
-			cv.SaveImage(saveSegmented, segVisual)
-        pieces = self.typesetter.typeset(characterPieces)
-        if saveTypeset != None:
-            typesetVisual = self.typesetter.showTypesetting(pieces)
-            cv.SaveImage(saveTypeset, typesetVisual)
-        def toNonString(fn):
-            def do(piece):
-                if isinstance(piece, str):
-                    return piece
-                else:
-                    return fn(piece)
-            return do
-        scaled = map(toNonString(self.scaler.scale), pieces)
-        features = map(toNonString(self.featureExtractor.extract), scaled)
-        if saveFeatures != None:
-            featuresVisual = extract.visualizeFeatures(scaled, features)
-            cv.SaveImage(saveFeatures, featuresVisual)
-        possibilities = map(toNonString(self.matcher.bestGuess), features)
-        if saveMatcher != None:
-            matcherOutput = file(saveMatcher, "w")
-            matcherOutput.write(str(possibilities))
-            matcherOutput.close()
-        output = self.linguist.correct(possibilities)
-        return output
+    def varChanged(self, attr, other):
+        return self.options is None or getattr(self.options, attr) != getattr(other, attr)
 
-def useOptions(options):
-    im = cv.LoadImage(options.target, cv.CV_LOAD_IMAGE_COLOR)
-    binarizer = options.binarizer()
-    segmenter = options.segmenter()
-    typesetter = options.typesetter(options.spaceWidth)
-    featureExtractor = options.featureExtractor()
-    scaler = options.scaler(options.dimension)
-    library = extract.buildLibrary(options.library, binarizer, scaler, segmenter, featureExtractor)
-    linguist = options.linguist()
-    matcher = match.knnMatcher(library, options.k)
-    recognizer = OCR(im, binarizer, segmenter, typesetter, scaler, featureExtractor, matcher, linguist)
-    string = recognizer.recognize(options.saveBinarized, options.saveSegmented, options.saveTypeset, options.saveFeatures, options.saveMatcher)
-    return string
+    def toNonString(self, fn):
+        def do(piece):
+            if isinstance(piece, str):
+                return piece
+            else:
+                return fn(piece)
+        return do
+
+    def withOptions(self, options):
+        targetChanged = self.varChanged('target', options)
+        if targetChanged:
+            options.showStatus("Loading image")
+            self.image = cv.LoadImage(options.target, cv.CV_LOAD_IMAGE_COLOR)
+        binarizerChanged = self.varChanged('binarizer', options)
+        if binarizerChanged:
+            options.showStatus("Initializing binarizer")
+            self.binarizer = options.binarizer()
+        redoBinarizeImage = targetChanged or binarizerChanged
+        if redoBinarizeImage:
+            options.showStatus("Binarizing image")
+            self.blackAndWhite = self.binarizer.binarize(self.image)
+            if options.saveBinarized != None:
+                cv.SaveImage(options.saveBinarized, self.blackAndWhite)
+        segmenterChanged = self.varChanged('segmenter', options)
+        if segmenterChanged:
+            options.showStatus("Initializing segmenter")
+            self.segmenter = options.segmenter()
+        redoSegmentedImage = segmenterChanged or redoBinarizeImage
+        if redoSegmentedImage:
+            options.showStatus("Segmenting image")
+            self.characterPieces = self.segmenter.segment(self.blackAndWhite)
+            if options.saveSegmented != None:
+                segVisual = self.segmenter.showSegments(self.blackAndWhite, self.characterPieces)
+                cv.SaveImage(options.saveSegmented, segVisual)
+        typesetterChanged = self.varChanged('typesetter', options) or self.varChanged('spaceWidth', options)
+        if typesetterChanged:
+            options.showStatus("Initializing typesetter")
+            self.typesetter = options.typesetter(options.spaceWidth)
+        redoTypeset = typesetterChanged or redoSegmentedImage
+        if redoTypeset:
+            options.showStatus("Typesetting image")
+            self.pieces = self.typesetter.typeset(self.characterPieces)
+            if options.saveTypeset != None:
+                typesetVisual = self.typesetter.showTypesetting(self.pieces)
+                cv.SaveImage(options.saveTypeset, typesetVisual)
+        scalerChanged = self.varChanged('scaler', options) or self.varChanged('dimension', options)
+        if scalerChanged:
+            options.showStatus("Initializing scaler")
+            self.scaler = options.scaler(options.dimension)
+        redoScale = scalerChanged or redoTypeset
+        if redoScale:
+            options.showStatus("Scaling image")
+            self.scaled = map(self.toNonString(self.scaler.scale), self.pieces)
+        featureExtractorChanged = self.varChanged('featureExtractor', options)
+        if featureExtractorChanged:
+            options.showStatus("Initializing feature extractor")
+            self.featureExtractor = options.featureExtractor()
+        redoFeatureExtractor = featureExtractorChanged or redoScale
+        if redoFeatureExtractor:
+            options.showStatus("Extracting features from image")
+            self.features = map(self.toNonString(self.featureExtractor.extract), self.scaled)
+            if options.saveFeatures != None:
+                featuresVisual = extract.visualizeFeatures(self.scaled, self.features)
+                cv.SaveImage(options.saveFeatures, featuresVisual)
+        libraryChanged = self.varChanged('library', options)
+        if libraryChanged:
+            options.showStatus("Loading image files for library")
+            self.rawLibrary = extract.buildLibrary(options.library)
+        redoLibraryBinScale = libraryChanged or binarizerChanged or scalerChanged
+        if redoLibraryBinScale:
+            options.showStatus("Binarizing and scaling library")
+            self.binScaleLibrary = [(char, self.binarizer.binarize(self.scaler.scale(self.binarizer.binarize(im)))) for (char, im) in self.rawLibrary]
+        #Maybe here use the typesetter? The segmenter? to preprocess the library
+        redoLibraryFeatureExtract = redoLibraryBinScale or featureExtractorChanged
+        if redoLibraryFeatureExtract:
+            options.showStatus("Extracting library features")
+            self.library = [(char, self.featureExtractor.extract(im)) for (char, im) in self.binScaleLibrary]
+        kChanged = self.varChanged('k', options)
+        matcherChanged = kChanged or redoLibraryFeatureExtract
+        if matcherChanged:
+            options.showStatus("Initializing matcher")
+            self.matcher = match.knnMatcher(self.library, options.k)
+        redoPossibilities = matcherChanged or redoFeatureExtractor
+        if redoPossibilities:
+            options.showStatus("Matching characters to library")
+            possibilities = map(self.toNonString(self.matcher.bestGuess), self.features)
+            if options.saveMatcher != None:
+                matcherOutput = file(options.saveMatcher, "w")
+                matcherOutput.write(str(self.possibilities))
+                matcherOutput.close()
+        linguistChanged = self.varChanged('linguist', options)
+        if linguistChanged:
+            options.showStatus("Initializing linguist")
+            self.linguist = options.linguist()
+        if linguistChanged or redoPossibilities:
+            options.showStatus("Applying linguistic correction")
+            self.output = self.linguist.correct(possibilities)
+        self.options = copy.copy(options)
+        options.showStatus("Complete")
+        return self.output
+
 
 classMap = {
     'binarizer': {'simple': binarize.SimpleBinarizer, 'adaptive': binarize.LocalBinarizer},
@@ -80,7 +132,8 @@ classMap = {
     }
 }
 
-class Options: pass
+class Options:
+    pass
 defaultOptions = Options()
 defaultOptions.spaceWidth = .4
 defaultOptions.library = "/Accounts/courses/comps/text_recognition/300/all/"
@@ -99,6 +152,7 @@ defaultOptions.saveSegmented = None
 defaultOptions.saveTypeset = None
 defaultOptions.saveFeatures = None
 defaultOptions.saveMatcher = None
+defaultOptions.showStatus = lambda status: None
 
 def processOptions(options, parser=None):
     newOptions = copy.copy(options)

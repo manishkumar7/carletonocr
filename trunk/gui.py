@@ -22,7 +22,6 @@ class OCRWindow(object):
         return panel
 
     def replaceImage(self, panel, path):
-        panel.DestroyChildren()
         frameWidth, frameHeight = panel.GetClientSizeTuple()
         image = wx.Image(path) 
         imageWidth, imageHeight = image.GetSize().Get()
@@ -32,7 +31,9 @@ class OCRWindow(object):
         else:
             newHeight = frameHeight
             newWidth = int(imageWidth * (float(frameHeight) / imageHeight))
-        wx.StaticBitmap(panel).SetBitmap(image.Rescale(newWidth, newHeight).ConvertToBitmap())
+        image = image.Rescale(newWidth, newHeight).ConvertToBitmap()
+        panel.DestroyChildren()
+        wx.StaticBitmap(panel).SetBitmap(image)
 
     def replaceText(self, panel, text, huge=False):
         panel.DestroyChildren()
@@ -161,6 +162,7 @@ class OCRWindow(object):
     def __init__(self):
         self.hasBeenRun = False
         self.options = copy.copy(ocr.defaultOptions)
+        self.runner = ocr.OCRRunner()
         def name():
         	return '/tmp/'+str(random.randint(1000, 1000000))+'.png'
         self.options.saveBinarized = name()
@@ -170,13 +172,15 @@ class OCRWindow(object):
         self.options.target = None
         self.app = wx.App()
         frame = wx.Frame(None, title="Optical Character Recognition", size=(1500, 700))
+        frame.CreateStatusBar()
+        self.options.showStatus = frame.SetStatusText
         self.mainView(frame)
         frame.Show()
         self.app.MainLoop()
 
     def update(self):
         if self.options.target is not None:
-            text = ocr.useOptions(ocr.processOptions(self.options))
+            text = self.runner.withOptions(ocr.processOptions(self.options))
             self.hasBeenRun = True
             self.redrawPictures()
             self.replaceText(self.matched, "Matcher visualization not yet implemented")

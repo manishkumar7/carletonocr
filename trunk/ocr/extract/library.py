@@ -2,7 +2,7 @@ import cv
 import os
 from ocr.typeset import characterCombine
 
-def buildLibrary(path, binarizer, scaler, segmenter, featureExtractor):
+def buildLibrary(path):
     dirs = os.listdir(path)
     chars = []
     for dir in dirs:
@@ -12,11 +12,7 @@ def buildLibrary(path, binarizer, scaler, segmenter, featureExtractor):
             for file in files:
                 #print file
                 im = cv.LoadImage(place + os.sep + file, cv.CV_LOAD_IMAGE_COLOR)
-                try: 
-                    processed = binarizer.binarize(scaler.scale(binarizer.binarize(im)))
-                    chars.append([file[0],featureExtractor.extract(processed)])
-                except cv.error:
-                    pass
+                chars.append((file[0], im)) 
                 #processed = characterCombine(typesetter.typeset(processed))
                 #cv.SaveImage("/Accounts/ehrenbed/Desktop/stuff2/"+file, processed)
         except OSError:
