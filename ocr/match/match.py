@@ -86,8 +86,6 @@ class Matcher:
                 curVisInd += 1
         return featuresVisual
 
-    
-    
 class knnMatcher(Matcher):
     def __init__(self, library, scaler, featureExtractor, k):
         self.k = k

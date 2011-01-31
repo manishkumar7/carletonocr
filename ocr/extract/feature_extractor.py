@@ -43,6 +43,10 @@ class TemplateImage(Features):
             #else:
                 #raise Exception("Why is there a pixel with value " + str(pair[0]))
         return self.formula(n00, n01, n10, n11)
+    def visualize(self):
+        vis = cv.CreateImage((self.image.width, self.image.height), 8, 3)
+        cv.CvtColor(self.image, vis, cv.CV_GRAY2RGB)
+        return vis
 
 class TemplateImageOldFormula(TemplateImage):
     def formula(self, n00, n01, n10, n11):
@@ -68,6 +72,11 @@ class ImageTranspose(object):
     def __getitem__(self, index):
         return self.image[index[1], index[0]]
 
+def whiteImage(size):
+    vis = cv.CreateImage(size, 8, 3)
+    cv.Rectangle(vis, (0,0), size, cv.RGB(255, 255, 255), -1)        
+    return vis
+
 class HorizontalHistogram(Features):
     def __init__(self, image):
         self.size = (image.width, image.height)
@@ -90,8 +99,7 @@ class HorizontalHistogram(Features):
             i -= 1
         reducedHist = self.histogram[startHist:stopHist+1]
         '''
-        vis = cv.CreateImage(self.size, 8, 3)
-        cv.Rectangle(vis, (0,0), self.size, cv.RGB(255, 255, 255), -1)        
+        vis = whiteImage(self.size)
         for i in range(len(self.histogram)):
             for j in range(self.histogram[i]):
                 vis [i,j] = (0,0,255)
@@ -103,8 +111,7 @@ class VerticalHistogram(HorizontalHistogram):
         self.histogram = [sum(((image[row, col] == 0 and 1) or 0) for col in range(image.width)) for row in range(image.height)]
         self.size = (image.width, image.height)
     def visualize(self):
-        vis = cv.CreateImage(self.size, 8, 3)
-        cv.Rectangle(vis, (0,0), self.size, cv.RGB(255, 255, 255), -1)        
+        vis = whiteImage(self.size)
         for i in range(len(self.histogram)):
             for j in range(self.histogram[i]):
                 vis [j,i] = (255,0,0)
@@ -224,6 +231,14 @@ class FourierDescriptor(Features):
                     zip(myCurve.fourierY[1:], yourCurve.fourierY[1:])]) 
         return diffX + diffY # Don't think the paper specifies if this should be an average
                              # or anything else.
+    def visualize(self):
+        vis = whiteImage(self.dimension)
+        positive, negative = self.curves
+        for positiveCurve in positive:
+            cv.Circle(vis, positiveCurve.centroid, 5, (0, 0, 255), -1)
+        for negativeCurve in negative:
+            cv.Circle(vis, positiveCurve.centroid, 5, (0, 255, 0), -1)
+        return vis
 
 def partition(list, predicate):
     yes, no = [], []
@@ -241,15 +256,6 @@ def averagePoint(data):
         sumX += point[0]
         sumY += point[1]
     return (sumX/len(data), sumY/len(data))
-    
-#def addTuples(tup1, tup2):
-#   return tuple(t1+t2 for (t1, t2) in zip(tup1, tup2))
-
-#def addTuples(A, B):
-#    out = []
-#    for i in xrange(len(A)):
-#        out.append(A[i] + B[i])
-#    return tuple(out)
 
 def addTuples(A, B):
     return tuple(map(operator.add, A, B))
@@ -259,6 +265,15 @@ def negTuple(tup):
 
 def minusTuples(tup1, tup2):
     return addTuples(tup1, negTuple(tup2))
+
+#See http://en.wikipedia.org/wiki/Polygonal_area#Area_and_centroid
+#Assumes non-self-intersecting contours, which I think is safe
+def contourArea(points):
+    area = 0
+    for i in range(len(points)-1):
+        area += points[i][0]*points[i+1][1]-points[i+1][0]*points[i][1]
+    return .5 * area
+                        
 
 class FourierComparison(FeatureExtractor):
     class Curve(object):
@@ -288,14 +303,6 @@ class FourierComparison(FeatureExtractor):
                 ordinalOffset += 1
         return output
     
-    #See http://en.wikipedia.org/wiki/Polygonal_area#Area_and_centroid
-    #Assumes non-self-intersecting contours, which I think is safe
-    def contourArea(self, points):
-        area = 0
-        for i in range(len(points)-1):
-            area += points[i][0]*points[i+1][1]-points[i+1][0]*points[i][1]
-        return .5 * area
-                        
     def contours(self, image):
         unvisited = set((row, col) for col in range(image.width+1) for row in range(image.height+1))
         contours = []
