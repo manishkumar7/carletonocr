@@ -19,25 +19,6 @@ class OCRWindow(object):
         if sizer is not None: sizer.Add(panel, 0, wx.EXPAND)
         return panel
 
-    def tab(self, notebook, attr, optionsFunc):
-        def contents(panel):
-            textPanel = wx.Panel(parent=panel, style=wx.SUNKEN_BORDER)
-            setattr(self, attr, textPanel)
-            text = wx.StaticText(parent=textPanel, label="No image loaded")
-            options = wx.Panel(parent=panel, style=wx.SUNKEN_BORDER)
-            optionsSizer = wx.BoxSizer(wx.VERTICAL)
-            optionsFunc(options, optionsSizer)
-            spacer = wx.Panel(options)
-            optionsSizer.Add(spacer, 1, flag=wx.EXPAND)
-            updateButton = wx.Button(parent=options, label="Update")
-            def doUpdate(*args):
-                self.update()
-            self.app.Bind(wx.EVT_BUTTON, doUpdate, updateButton)
-            optionsSizer.Add(updateButton, flag=wx.ALIGN_RIGHT)
-            options.SetSizer(optionsSizer)
-            return textPanel, options
-        return self.beside(notebook, None, contents, expandRight=False)
-
     def replaceImage(self, panel, path):
         panel.DestroyChildren()
         frameWidth, frameHeight = panel.GetClientSizeTuple()
@@ -55,7 +36,7 @@ class OCRWindow(object):
         panel.DestroyChildren()
         wx.StaticText(parent=panel, label=text)
 
-    def chooseFile(self, parent, sizer, attr, defaultLabel, prompt):
+    def chooseFile(self, parent, sizer, attr, defaultLabel, prompt, callback=lambda: None):
         def contents(panel):
             button = wx.Button(panel, wx.ID_ANY, prompt)
             namePanel = wx.Panel(panel, wx.HORIZONTAL)
@@ -66,14 +47,11 @@ class OCRWindow(object):
                     filename = dialog.GetPath()
                     setattr(self.options, attr, filename)
                     self.replaceText(namePanel, "  "+filename)
+                    callback()
                 dialog.Destroy()
             self.app.Bind(wx.EVT_BUTTON, chooseFile, button)
             return button, namePanel
         self.beside(parent, sizer, contents, expandLeft=False)
-    
-    def fileOptions(self, parent, sizer):
-        self.chooseFile(parent, sizer, "target", "No file loaded", "Choose file")
-        self.chooseFile(parent, sizer, "library", self.options.library, "Choose library path")
 
     def besideLabel(self, parent, sizer, name, right):
         def contents(panel):
@@ -108,43 +86,53 @@ class OCRWindow(object):
             return entry
         self.besideLabel(parent, sizer, name, contents)
 
-    def binarizerOptions(self, frame, sizer):
+    def imageTabs(self, parent):
+        notebook = wx.aui.AuiNotebook(parent, style=wx.aui.AUI_NB_TOP)
+        tabParameters = [
+            ('image', "Original"),
+            ('binarized', "Binary"),
+            ('segmented', "Segmented"),
+            ('typesetter', "Typeset"),
+            ('features', "Features"),
+            ('matched', "Matched"),
+            ('output', "Final output")
+        ]
+        for attr, name in tabParameters:
+            textPanel = wx.Panel(parent=notebook)
+            setattr(self, attr, textPanel)
+            text = wx.StaticText(parent=textPanel, label="No image loaded for %s" % attr)
+            notebook.AddPage(textPanel, name)
+        return notebook
+
+    def optionWidgets(self, parent):
+        frame = wx.Panel(parent=parent, style=wx.SUNKEN_BORDER)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        def updateFile():
+            print 'called it'
+            self.replaceImage(self.image, self.options.target)
+        self.chooseFile(frame, sizer, "target", "No file loaded", "Choose file", callback=updateFile)
+        self.chooseFile(frame, sizer, "library", self.options.library, "Choose library path")
         self.dropdown(frame, sizer, 'Binarizer', 'binarizer')
-    
-    def segmenterOptions(self, frame, sizer):
         self.dropdown(frame, sizer, 'Segmenter', 'segmenter')
-    	
-    def typesetterOptions(self, frame, sizer):
         self.dropdown(frame, sizer, 'Typesetter', 'typesetter')
         self.entry(frame, sizer, 'Width of space', 'spaceWidth', float)
-
-    def featureExtractorOptions(self, frame, sizer):
         self.dropdown(frame, sizer, 'Feature extractor', 'featureExtractor')
-
-    def matcherOptions(self, frame, sizer):
         self.entry(frame, sizer, 'k nearest neighbors', 'k', int)
-
-    def linguistOptions(self, frame, sizer):
         self.dropdown(frame, sizer, 'Linguist', 'linguist')
+        spacer = wx.Panel(frame)
+        sizer.Add(spacer, 1, flag=wx.EXPAND)
+        updateButton = wx.Button(parent=frame, label="Update")
+        def doUpdate(*args):
+            self.update()
+        self.app.Bind(wx.EVT_BUTTON, doUpdate, updateButton)
+        sizer.Add(updateButton, flag=wx.ALIGN_RIGHT)
+        frame.SetSizer(sizer)
+        return frame
     
-    def tabSet(self, frame):
-        panel = wx.Panel(parent=frame)
-        notebook = wx.aui.AuiNotebook(panel, style=wx.aui.AUI_NB_TOP)
-        tabParameters = [
-            ('image', self.fileOptions, "Original"),
-            ('binarized', self.binarizerOptions, "Binary"),
-            ('segmented', self.segmenterOptions, "Segmented"),
-            ('typesetter', self.typesetterOptions, "Typeset"),
-            ('features', self.featureExtractorOptions, "Features"),
-            ('matched', self.matcherOptions, "Matched"),
-            ('output', self.linguistOptions, "Final output")
-        ]
-        
-        for attr, options, name in tabParameters:
-            notebook.AddPage(self.tab(notebook, attr, options), name)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(notebook, 1, wx.EXPAND)
-        panel.SetSizer(sizer)
+    def mainView(self, frame):
+        def contents(parent):
+            return self.imageTabs(parent), self.optionWidgets(parent)
+        self.beside(frame, None, contents, expandRight=False)
 
     def __init__(self):
         self.options = copy.copy(ocr.defaultOptions)
@@ -157,7 +145,7 @@ class OCRWindow(object):
         self.options.target = None
         self.app = wx.PySimpleApp()
         frame = wx.Frame(None, title="Optical Character Recognition", size=(1200, 700))
-        self.tabSet(frame)
+        self.mainView(frame)
         frame.Show()
         self.app.MainLoop()
 
