@@ -31,7 +31,7 @@ def render(font, char):
     cv.SetData(cv_im, im.tostring())
     return cv_im
 
-def buildLibrary(path): #ignore path
+def buildLibrary():
     chars = []
     for font in fonts:
         for char in charsToGenerate:

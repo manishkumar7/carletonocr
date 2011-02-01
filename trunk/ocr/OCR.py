@@ -78,10 +78,10 @@ class OCRRunner:
             if options.saveFeatures != None:
                 featuresVisual = extract.visualizeFeatures(self.scaled, self.features)
                 cv.SaveImage(options.saveFeatures, featuresVisual)
-        libraryChanged = self.varChanged('library', options)
+        libraryChanged = not hasattr(self, 'rawLibrary')
         if libraryChanged:
             options.showStatus("Loading image files for library")
-            self.rawLibrary = extract.buildLibrary(options.library)
+            self.rawLibrary = extract.buildLibrary()
         redoLibraryScale = libraryChanged or scalerChanged
         if redoLibraryScale:
             options.showStatus("Scaling library")
@@ -143,9 +143,6 @@ class Options:
     pass
 defaultOptions = Options()
 defaultOptions.spaceWidth = .4
-defaultOptions.library = "/Accounts/courses/comps/text_recognition/300/all/"
-#defaultOptions.library = "/Accounts/courses/comps/text_recognition/300/NRTSingle/"
-#defaultOptions.library = "text_recognition/300/all/"
 defaultOptions.dimension = 100
 defaultOptions.k = 1
 defaultOptions.binarizer = 'simple'
