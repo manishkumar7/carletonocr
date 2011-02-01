@@ -13,7 +13,7 @@ class ProportionalScaler(Scaler):
     def __init__(self, dimension):
         Scaler.__init__(self, dimension)
     def scale(self, image):
-        scaled = cv.CreateImage((self.dimension, self.dimension), 8, 1)
+        scaled = cv.CreateImage((self.dimension, self.dimension), 8, image.channels)
         if image.width > image.height:
             factor = float(self.dimension) / image.width
             targetWidth = self.dimension
@@ -25,8 +25,5 @@ class ProportionalScaler(Scaler):
         matrix = cv.CreateMat(2, 3, cv.CV_64FC1)
         cv.GetAffineTransform([(0, 0), (image.height, 0), (0, image.width)], [(0, 0), (targetHeight, 0), (0, targetWidth)], matrix)
         #print "The transform is", matrix
-        cv.WarpAffine(image, scaled, matrix, fillval=255)
-        tmp = SimpleBinarizer()
-        return tmp.binarize(scaled) # A workaround,
-        # the FD code gets angry at greyscale images
-
+        cv.WarpAffine(image, scaled, matrix, fillval=255 if image.channels == 1 else (255, 255, 255)) #CV_INTER_NN doesn't work
+        return scaled

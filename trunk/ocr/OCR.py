@@ -63,7 +63,10 @@ class OCRRunner:
         redoScale = scalerChanged or redoTypeset
         if redoScale:
             options.showStatus("Scaling image")
-            self.scaled = map(self.toNonString(self.scaler.scale), self.pieces)
+            bin = binarize.SimpleBinarizer()
+            def scaleAndRebinarize(image):
+            	return bin.binarize(self.scaler.scale(image))
+            self.scaled = map(self.toNonString(scaleAndRebinarize), self.pieces)
         featureExtractorChanged = self.varChanged('featureExtractor', options)
         if featureExtractorChanged:
             options.showStatus("Initializing feature extractor")
@@ -79,12 +82,16 @@ class OCRRunner:
         if libraryChanged:
             options.showStatus("Loading image files for library")
             self.rawLibrary = extract.buildLibrary(options.library)
-        redoLibraryBinScale = libraryChanged or binarizerChanged or scalerChanged
-        if redoLibraryBinScale:
-            options.showStatus("Binarizing and scaling library")
-            self.binScaleLibrary = [(char, self.binarizer.binarize(self.scaler.scale(self.binarizer.binarize(im)))) for (char, im) in self.rawLibrary]
+        redoLibraryScale = libraryChanged or scalerChanged
+        if redoLibraryScale:
+            options.showStatus("Scaling library")
+            self.scaledLibrary = [(char, self.scaler.scale(im)) for (char, im) in self.rawLibrary]
+        redoLibraryBinarize = redoLibraryScale or binarizerChanged
+        if redoLibraryBinarize:
+            options.showStatus("Binarizing library")
+            self.binScaleLibrary = [(char, self.binarizer.binarize(im)) for (char, im) in self.scaledLibrary]
         #Maybe here use the typesetter? The segmenter? to preprocess the library
-        redoLibraryFeatureExtract = redoLibraryBinScale or featureExtractorChanged
+        redoLibraryFeatureExtract = redoLibraryBinarize or featureExtractorChanged
         if redoLibraryFeatureExtract:
             options.showStatus("Extracting library features")
             self.library = [(char, self.featureExtractor.extract(im)) for (char, im) in self.binScaleLibrary]
@@ -167,3 +174,12 @@ def processOptions(options, parser=None):
                 print "Bad option for %s: %s.\nAdmissible values: %s." % (option, value, ', '.join(possibilities))
                 sys.exit(1)
     return newOptions
+
+'''
+Options to add:
+- dimension (add to GUI)
+- typesetter tuning parameters
+- adaptive binarizer tuning parameters
+- Fourier descriptor tuning parameters
+How to expose UI-agnostic way of having dependent parameters?
+'''
