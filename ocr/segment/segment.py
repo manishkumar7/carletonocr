@@ -73,7 +73,7 @@ class ConnectedComponentSegmenter(Segmenter):
             if point[1] > maxCol:
                 maxCol = point[1]
         #(x,y,width,height)
-        return (minCol-1, minRow-1, maxCol-minCol+1, maxRow-minRow+1)
+        return (minCol-1, minRow-1, maxCol-minCol+2, maxRow-minRow+2)
     
     def createImage(self, boundingBox, points):
         newImage = cv.CreateImage((boundingBox[2], boundingBox[3]), 8, 1)

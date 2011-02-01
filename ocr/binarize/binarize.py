@@ -44,9 +44,10 @@ class SimpleBinarizer(Binarizer):
         return blockSize
 
 BACKGROUND_WHITE_LIMIT = .9
+PROPORTION = .5
 
 class LocalBinarizer(Binarizer):
-    def binarize(self, im, proportion=1):
+    def binarize(self, im, proportion=PROPORTION):
         '''Given an image, return a black and white image. Uses OPenCV's 
         adaptive thresholding with blockSize as large as possible'''
         #create an image that will eventually be a binarization of the input image
@@ -83,7 +84,7 @@ class LocalBinarizer(Binarizer):
     
     def formatImage(self, image):
         if image.nChannels == 1:
-            return [im]
+            return [image]
         elif image.nChannels == 3:
             channels = [cv.CreateImage((image.width, image.height), 8, 1) for i in range(3)]
             cv.Split(image, channels[0], channels[1], channels[2], None)

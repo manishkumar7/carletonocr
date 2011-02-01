@@ -83,6 +83,8 @@ def characterCombine(characterPieces):
         return characterPieces[0][1]
     return combineImages(characterPieces[0][0], characterPieces[0][1], characterPieces[1][0], characterPieces[1][1])[1]
 
+LOOKBACK = 0
+
 class LinearTypesetter(Typesetter):
 
     def __init__(self, spaceWidth):
@@ -112,7 +114,7 @@ class LinearTypesetter(Typesetter):
     def findNextPiece(self, piecesLeft, currentLine):
         minRow = 999999999
         maxRow = 0
-        for (box, image) in currentLine[-5:]:
+        for (box, image) in currentLine[-LOOKBACK:]:
             if box[1] < minRow:
                 minRow = box[1]
             if box[1]+box[3] > maxRow:
