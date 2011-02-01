@@ -134,7 +134,7 @@ class OCRWindow(object):
         def updateFile():
             self.replaceImage(self.image, self.options.target)
         self.chooseFile(frame, sizer, "target", "No file loaded", "Choose file", callback=updateFile)
-        self.chooseFile(frame, sizer, "library", self.options.library, "Choose library path")
+        self.entry(frame, sizer, 'Internal dimension of characters', 'dimension', int)
         self.dropdown(frame, sizer, 'Binarizer', 'binarizer')
         self.dropdown(frame, sizer, 'Segmenter', 'segmenter')
         self.dropdown(frame, sizer, 'Typesetter', 'typesetter')
