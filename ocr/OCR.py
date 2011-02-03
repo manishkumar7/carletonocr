@@ -65,7 +65,7 @@ class OCRRunner:
             options.showStatus("Scaling image")
             bin = binarize.SimpleBinarizer()
             def scaleAndRebinarize(image):
-            	return bin.binarize(self.scaler.scale(image))
+                return bin.binarize(self.scaler.scale(image))
             self.scaled = map(self.toNonString(scaleAndRebinarize), self.pieces)
         featureExtractorChanged = self.varChanged('featureExtractor', options)
         if featureExtractorChanged:
@@ -103,7 +103,18 @@ class OCRRunner:
         redoPossibilities = matcherChanged or redoFeatureExtractor
         if redoPossibilities:
             options.showStatus("Matching characters to library")
-            possibilities = map(self.toNonString(self.matcher.bestGuess), self.features)
+            #This hides too much from the visualization
+            #possibilities = map(self.toNonString(self.matcher.bestGuess), self.features)
+            #This is a total hack
+            def runBestGuess():
+                possibilities = []
+                visualizerFeatures =[]
+                for characterFeature in self.features:
+                    tmp = self.matcher.bestGuess(characterFeature)
+                    possibilities.append([(tmp[0][0],tmp[0][1][0])])
+                    visualizerFeatures.append([tmp[0][1][0], tmp[0][1][1]])
+                return possibilities, visualizerFeatures
+            possibilities, visualizerFeatures = runBestGuess()
             if options.saveMatcher != None:
                 matcherOutput = file(options.saveMatcher, "w")
                 matcherOutput.write(str(self.possibilities))
