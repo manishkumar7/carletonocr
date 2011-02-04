@@ -103,18 +103,10 @@ class OCRRunner:
         redoPossibilities = matcherChanged or redoFeatureExtractor
         if redoPossibilities:
             options.showStatus("Matching characters to library")
-            #This hides too much from the visualization
-            #possibilities = map(self.toNonString(self.matcher.bestGuess), self.features)
-            #This is a total hack
-            def runBestGuess():
-                possibilities = []
-                visualizerFeatures =[]
-                for characterFeature in self.features:
-                    tmp = self.matcher.bestGuess(characterFeature)
-                    possibilities.append([(tmp[0][0],tmp[0][1][0])])
-                    visualizerFeatures.append([tmp[0][1][0], tmp[0][1][1]])
-                return possibilities, visualizerFeatures
-            possibilities, visualizerFeatures = runBestGuess()
+            #This hides too much from the visualization, visualizerFeatures has been added
+            print map(self.toNonString(self.matcher.bestGuess), self.features)
+            possibilities, visualizerFeatures = zip(*[[[(string, similarity) for (string, [similarity, feature]) in t],[(similarity, feature) for (string, [similarity, feature]) in t]] for t in map(self.toNonString(self.matcher.bestGuess), self.features)])
+            print possibilities
             if options.saveMatcher != None:
                 matcherOutput = file(options.saveMatcher, "w")
                 matcherOutput.write(str(self.possibilities))

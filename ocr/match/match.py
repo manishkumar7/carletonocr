@@ -19,5 +19,6 @@ class knnMatcher(object):
                 heapq.heappush(best, (similarity, character, features))
         voteDict = {}
         for similarity, character, features in best:
-            voteDict[character] = [voteDict.get(character, 0) + similarity, features]
+            #voteDict[character] = voteDict.get(character, 0) + similarity
+            voteDict[character] = [(voteDict[character][0] if character in voteDict else 0) + similarity, features]
         return voteDict.items()
