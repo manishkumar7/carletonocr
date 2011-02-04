@@ -104,8 +104,8 @@ class OCRRunner:
         if redoPossibilities:
             options.showStatus("Matching characters to library")
             #This hides too much from the visualization, visualizerFeatures has been added
-            print map(self.toNonString(self.matcher.bestGuess), self.features)
-            possibilities, visualizerFeatures = zip(*[[[(string, similarity) for (string, [similarity, feature]) in t],[(similarity, feature) for (string, [similarity, feature]) in t]] for t in map(self.toNonString(self.matcher.bestGuess), self.features)])
+            #possibilities = map(self.toNonString(self.matcher.bestGuess), self.features)
+            possibilities, visualizerFeatures = zip(*[[[(t, 1.0)],[(1.0, t)]] if isinstance(t, str) else [[(string, similarity) for (string, [similarity, feature]) in t],[(similarity, feature) for (string, [similarity, feature]) in t]] for t in map(self.toNonString(self.matcher.bestGuess), self.features)])
             print possibilities
             if options.saveMatcher != None:
                 matcherOutput = file(options.saveMatcher, "w")
