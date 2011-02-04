@@ -65,7 +65,6 @@ class knnMatcher(object):
                 cv.Line(matchVis, (0, int(y+border/2)),(matchVis.width, int(y+border/2)), (0,0,0), 3)
                 y += border
         cv.Line(matchVis, (int(chFeatures[0].width+border*1.5),0),(int(chFeatures[0].width+border*1.5),matchVis.height), (0,0,0), 3)
-        cv.SaveImage('matchVis.png',matchVis)
         return matchVis
         
                 
