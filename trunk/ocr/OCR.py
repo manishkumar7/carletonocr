@@ -105,11 +105,20 @@ class OCRRunner:
             options.showStatus("Matching characters to library")
             #This hides too much from the visualization, visualizerFeatures has been added
             #possibilities = map(self.toNonString(self.matcher.bestGuess), self.features)
-            possibilities, visualizerFeatures = zip(*[[[(t, 1.0)],[(1.0, t)]] if isinstance(t, str) else [[(string, similarity) for (string, [similarity, feature]) in t],[(similarity, feature) for (string, [similarity, feature]) in t]] for t in map(self.toNonString(self.matcher.bestGuess), self.features)])
-            print possibilities
+            #possibilities, visualizerFeatures = zip(*[[[(t, 1.0)],[(1.0, t)]] if isinstance(t, str) else [[(string, similarity) for (string, [similarity, feature]) in t],[(similarity, feature) for (string, [similarity, feature]) in t]] for t in map(self.toNonString(self.matcher.bestGuess), self.features)])
+            possibilities, visualizerFeatures = [],[]
+            for feat in self.features:
+                if isinstance(feat, str):
+                    poss = feat
+                else:
+                    poss, vis = self.matcher.bestGuess(feat)
+                    visualizerFeatures.append(vis)
+                possibilities.append(poss)
             if options.saveMatcher != None:
+                matcherVisual = self.matcher.visualize(self.features, visualizerFeatures)
+                cv.SaveImage(options.saveMatcher, matcherVisual)
                 matcherOutput = file(options.saveMatcher, "w")
-                matcherOutput.write(str(self.possibilities))
+                matcherOutput.write(str(possibilities))
                 matcherOutput.close()
         linguistChanged = self.varChanged('linguist', options)
         if linguistChanged:
