@@ -170,6 +170,7 @@ class OCRWindow(object):
         self.options.saveSegmented = name()
         self.options.saveTypeset = name()
         self.options.saveFeatures = name()
+        self.options.saveMatcher = name()
         self.options.target = None
         self.app = wx.App()
         frame = wx.Frame(None, title="Optical Character Recognition", size=(1500, 700))
@@ -193,7 +194,6 @@ class OCRWindow(object):
     def updateComplete(self, text):
         self.hasBeenRun = True
         self.redrawPictures()
-        self.replaceText(self.matched, "Matcher visualization not yet implemented")
         self.replaceText(self.output, text, huge=True)
 
     def redrawPictures(self):
@@ -203,6 +203,7 @@ class OCRWindow(object):
             self.replaceImage(self.segmented, self.options.saveSegmented)
             self.replaceImage(self.typesetter, self.options.saveTypeset)
             self.replaceImage(self.features, self.options.saveFeatures)
+            self.replaceImage(self.matcher, self.options.saveMatcher)
 
 if __name__ == '__main__':
     OCRWindow()
