@@ -89,17 +89,17 @@ class OCRWindow(object):
         self.besideLabel(parent, sizer, name, contents)
 
     def entry(self, parent, sizer, name, attr, type):
+        self.entries.append(attr)
         def contents(panel):
             entry = wx.TextCtrl(panel, value=str(getattr(ocr.defaultOptions, attr)))
             def changeText(*args):
+                text = entry.GetValue()
                 try:
-                    text = entry.GetValue()
                     value = type(text)
                 except ValueError:
-                    wx.MessageBox('Invalid entry', '%s is not a valid %s for %s' % (text, type.__name__, name))
-                    return None
+                    value = text
                 setattr(self.options, attr, value)
-            self.app.Bind(wx.EVT_TEXT_ENTER, changeText, entry)
+            self.app.Bind(wx.EVT_TEXT, changeText, entry)
             return entry
         self.besideLabel(parent, sizer, name, contents)
 
@@ -111,7 +111,7 @@ class OCRWindow(object):
             ('segmented', "Segmented"),
             ('typesetter', "Typeset"),
             ('features', "Features"),
-            ('matched', "Matched"),
+            ('matcher', "Matched"),
             ('output', "Final output")
         ]
         for attr, name in tabParameters:
@@ -172,6 +172,7 @@ class OCRWindow(object):
         self.options.saveFeatures = name()
         self.options.saveMatcher = name()
         self.options.target = None
+        self.entries = []
         self.app = wx.App()
         frame = wx.Frame(None, title="Optical Character Recognition", size=(1500, 700))
         frame.CreateStatusBar()
@@ -183,6 +184,13 @@ class OCRWindow(object):
         self.app.MainLoop()
 
     def update(self):
+        for entry in self.entries:
+            value = getattr(self.options, entry)
+            if isinstance(value, str) or isinstance(value, unicode):
+                dialog = wx.MessageDialog(None, '%s is not a valid for %s' % (value, entry), 'Invalid entry', wx.OK | wx.ICON_WARNING)
+                dialog.ShowModal()
+                dialog.Destroy()
+                return None
         if self.options.target is not None:
             thread = threading.Thread(target=self.runThread)
             thread.start()
