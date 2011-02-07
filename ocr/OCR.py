@@ -11,13 +11,13 @@ class OCRRunner:
     def varChanged(self, attr, other):
         return self.options is None or getattr(self.options, attr) != getattr(other, attr)
 
-    def toNonString(self, fn):
+    def toNonString(self, fn, lst):
         def do(piece):
             if isinstance(piece, str):
                 return piece
             else:
                 return fn(piece)
-        return do
+        return map(do, lst)
 
     def withOptions(self, options):
         targetChanged = self.varChanged('target', options)
@@ -66,7 +66,7 @@ class OCRRunner:
             bin = binarize.SimpleBinarizer()
             def scaleAndRebinarize(image):
                 return bin.binarize(self.scaler.scale(image))
-            self.scaled = map(self.toNonString(scaleAndRebinarize), self.pieces)
+            self.scaled = self.toNonString(scaleAndRebinarize, self.pieces)
         featureExtractorChanged = self.varChanged('featureExtractor', options)
         if featureExtractorChanged:
             options.showStatus("Initializing feature extractor")
@@ -74,7 +74,7 @@ class OCRRunner:
         redoFeatureExtractor = featureExtractorChanged or redoScale
         if redoFeatureExtractor:
             options.showStatus("Extracting features from image")
-            self.features = map(self.toNonString(self.featureExtractor.extract), self.scaled)
+            self.features = self.toNonString(self.featureExtractor.extract, self.scaled)
             if options.saveFeatures != None:
                 featuresVisual = extract.visualizeFeatures(self.scaled, self.features)
                 cv.SaveImage(options.saveFeatures, featuresVisual)
@@ -103,30 +103,18 @@ class OCRRunner:
         redoPossibilities = matcherChanged or redoFeatureExtractor
         if redoPossibilities:
             options.showStatus("Matching characters to library")
-            #This hides too much from the visualization, visualizerFeatures has been added
-            #possibilities = map(self.toNonString(self.matcher.bestGuess), self.features)
-            #possibilities, visualizerFeatures = zip(*[[[(t, 1.0)],[(1.0, t)]] if isinstance(t, str) else [[(string, similarity) for (string, [similarity, feature]) in t],[(similarity, feature) for (string, [similarity, feature]) in t]] for t in map(self.toNonString(self.matcher.bestGuess), self.features)])
-            possibilities, visualizerFeatures = [],[]
-            for feat in self.features:
-                if isinstance(feat, str):
-                    poss = feat
-                else:
-                    poss, vis = self.matcher.bestGuess(feat)
-                    visualizerFeatures.append(vis)
-                possibilities.append(poss)
+            best = self.toNonString(self.matcher.bestFew, self.features)
+            self.voteDict = self.toNonString(self.matcher.voteDict, best)
             if options.saveMatcher != None:
-                matcherVisual = self.matcher.visualize(self.features, visualizerFeatures)
+                matcherVisual = self.matcher.visualize(self.features, best)
                 cv.SaveImage(options.saveMatcher, matcherVisual)
-                matcherOutput = file(options.saveMatcher, "w")
-                matcherOutput.write(str(possibilities))
-                matcherOutput.close()
         linguistChanged = self.varChanged('linguist', options)
         if linguistChanged:
             options.showStatus("Initializing linguist")
             self.linguist = options.linguist()
         if linguistChanged or redoPossibilities:
             options.showStatus("Applying linguistic correction")
-            self.output = self.linguist.correct(possibilities)
+            self.output = self.linguist.correct(self.voteDict)
         self.options = copy.copy(options)
         options.showStatus("Complete")
         return self.output
