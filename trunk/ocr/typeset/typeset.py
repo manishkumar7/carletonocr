@@ -5,7 +5,6 @@ class Typesetter(object):
         self.spaceWidth = spaceWidth
     def typeset(self, characterPieces):
         return [character[1] for character in characterPieces]
-    #Only use information coming from the typesetter.
     def showTypesetting(self, pieces):
         numLines = pieces.count('\n') + 1
         lines = []
@@ -65,17 +64,6 @@ def combineImages(box1, image1, box2, image2):
                 outputImage[row+offset[1], col+offset[0]] = image[row,col]
     return outputBox, outputImage
 
-#Set these appropriately
-TOP_MARGIN = 0
-LEFT_MARGIN = 0
-RIGHT_MARGIN = 0
-BOTTOM_MARGIN = 0
-SPACE_WIDTH = 0 #Check isaSpaceBetween() for a way to get this value
-CHARACTER_SPACING = 0
-SPACE_BETWEEN_LINES = 0
-
-
-
 def characterCombine(characterPieces):
     if len(characterPieces) > 2:
         raise Exception("Too many character pieces")
@@ -83,12 +71,11 @@ def characterCombine(characterPieces):
         return characterPieces[0][1]
     return combineImages(characterPieces[0][0], characterPieces[0][1], characterPieces[1][0], characterPieces[1][1])[1]
 
-LOOKBACK = 0
-
 class LinearTypesetter(Typesetter):
 
-    def __init__(self, spaceWidth):
+    def __init__(self, spaceWidth, lookback):
         Typesetter.__init__(self, spaceWidth)
+        self.lookback = lookback
 
     def bestPieceBy(self, pieces, utility):
         bestPiece = None
@@ -114,7 +101,7 @@ class LinearTypesetter(Typesetter):
     def findNextPiece(self, piecesLeft, currentLine):
         minRow = 999999999
         maxRow = 0
-        for (box, image) in currentLine[-LOOKBACK:]:
+        for (box, image) in currentLine[-self.lookback:]:
             if box[1] < minRow:
                 minRow = box[1]
             if box[1]+box[3] > maxRow:

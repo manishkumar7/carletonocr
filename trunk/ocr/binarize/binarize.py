@@ -43,17 +43,18 @@ class SimpleBinarizer(Binarizer):
                 blockSize = blockSize - 1
         return blockSize
 
-BACKGROUND_WHITE_LIMIT = .9
-PROPORTION = .5
-
 class LocalBinarizer(Binarizer):
-    def binarize(self, im, proportion=PROPORTION):
+    def __init__(self, backgroundWhiteLimit, proportion):
+        self.backgroundWhiteLimit = backgroundWhiteLimit #This isn't used anywhere
+        self.proportion = proportion
+
+    def binarize(self, im):
         '''Given an image, return a black and white image. Uses OPenCV's 
         adaptive thresholding with blockSize as large as possible'''
         #create an image that will eventually be a binarization of the input image
         #get parameter values
         maxVal = 255
-        bSize = self.getBlockSize(im, proportion)
+        bSize = self.getBlockSize(im)
         #create the binarized image
         numWhitePixels, bestPixels = 0,0
         bestThreshold = None
@@ -81,7 +82,7 @@ class LocalBinarizer(Binarizer):
         #for (threshold, i) in zip(thresh, range(3)):
             #cv.SaveImage("/Accounts/mccartya/carletonocr/"+str(i)+".png", threshold)
         return bestThreshold
-    
+
     def formatImage(self, image):
         if image.nChannels == 1:
             return [image]
@@ -92,14 +93,13 @@ class LocalBinarizer(Binarizer):
         else:
             raise Exception("Incorrect number of image channels.")
 
-        
-    def getBlockSize(self, image, proportion=1.0):
+    def getBlockSize(self, image):
         '''Given an image, determines the blockSize argument for binarize().
         Defaults to the largest possible blockSize, which can be scaled down.'''
-        if proportion > 1:
+        if self.proportion > 1:
             blockSize = max(image.width, image.height)
         else:
-            blockSize = int(max(image.width, image.height) * proportion)
+            blockSize = int(max(image.width, image.height) * self.proportion)
         if blockSize % 2 == 0:
             blockSize = blockSize + 1
         #print blockSize

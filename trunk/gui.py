@@ -50,6 +50,7 @@ class OCRWindow(object):
         vPanel.SetSizer(vSizer)
         hSizer.Add(vPanel, 1, wx.EXPAND)
         panel.SetSizer(hSizer)
+        panel.Layout()
 
     def chooseFile(self, parent, sizer, attr, defaultLabel, prompt, callback=lambda: None):
         def contents(panel):
@@ -77,17 +78,6 @@ class OCRWindow(object):
         sizer.AddSpacer(PADDING_WIDTH)
         self.beside(parent, sizer, contents)
 
-    def dropdown(self, parent, sizer, name, attr):
-        options = ocr.classMap[attr].keys()
-        default = getattr(ocr.defaultOptions, attr)
-        def contents(panel):
-             control = wx.ComboBox(panel, value=default, choices=options, style=wx.CB_DROPDOWN)
-             def changeOption(*args):
-                 setattr(self.options, attr, control.GetValue())
-             self.app.Bind(wx.EVT_COMBOBOX, changeOption, control)
-             return control
-        self.besideLabel(parent, sizer, name, contents)
-
     def entry(self, parent, sizer, name, attr, type):
         self.entries.append(attr)
         def contents(panel):
@@ -102,6 +92,34 @@ class OCRWindow(object):
             self.app.Bind(wx.EVT_TEXT, changeText, entry)
             return entry
         self.besideLabel(parent, sizer, name, contents)
+
+    def setPanelOptions(self, panel, attr, parent):
+        panel.DestroyChildren()
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        for opt in ocr.dependentOptions:
+            if opt.parent == attr and opt.parentValue == getattr(self.options, attr):
+                self.entry(panel, sizer, opt.name, opt.name, opt.type)
+        panel.SetSizer(sizer)
+        panel.Layout()
+        parent.Layout()
+
+    def dropdown(self, parent, sizer, name, attr):
+        dependentOptions = wx.Panel(parent=parent)
+        options = ocr.classMap[attr].keys()
+        default = getattr(ocr.defaultOptions, attr)
+        def contents(panel):
+             control = wx.ComboBox(panel, value=default, choices=options, style=wx.CB_DROPDOWN)
+             def changeOption(*args):
+                 oldValue = getattr(self.options, attr)
+                 value = control.GetValue()
+                 setattr(self.options, attr, value)
+                 if value != oldValue:
+                     self.setPanelOptions(dependentOptions, attr, parent)
+             self.app.Bind(wx.EVT_COMBOBOX, changeOption, control)
+             return control
+        self.besideLabel(parent, sizer, name, contents)
+        sizer.Add(dependentOptions, 0, wx.EXPAND)
+        self.setPanelOptions(dependentOptions, attr, parent)
 
     def imageTabs(self, parent):
         notebook = wx.aui.AuiNotebook(parent, style=wx.aui.AUI_NB_TOP)
@@ -196,7 +214,8 @@ class OCRWindow(object):
             thread.start()
 
     def runThread(self):
-        text = self.runner.withOptions(ocr.processOptions(self.options))
+        ocr.checkOptions(self.options)
+        text = self.runner.withOptions(self.options)
         wx.CallAfter(self.updateComplete, text)
 
     def updateComplete(self, text):

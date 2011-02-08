@@ -8,7 +8,7 @@ import sys
 
 def main():
     options, parser = getOptions()
-    options = ocr.processOptions(options, parser)
+    ocr.checkOptions(options, parser)
     print ocr.OCRRunner().withOptions(options)
 
 

@@ -11,6 +11,9 @@ class OCRRunner:
     def varChanged(self, attr, other):
         return self.options is None or getattr(self.options, attr) != getattr(other, attr)
 
+    def dependentVarChanged(self, attr, other):
+        return True in (self.varChanged(at, other) for at in other.potential(attr))
+
     def toNonString(self, fn, lst):
         def do(piece):
             if isinstance(piece, str):
@@ -24,10 +27,10 @@ class OCRRunner:
         if targetChanged:
             options.showStatus("Loading image")
             self.image = cv.LoadImage(options.target, cv.CV_LOAD_IMAGE_COLOR)
-        binarizerChanged = self.varChanged('binarizer', options)
+        binarizerChanged = self.varChanged('binarizer', options) or self.dependentVarChanged('binarizer', options)
         if binarizerChanged:
             options.showStatus("Initializing binarizer")
-            self.binarizer = options.binarizer()
+            self.binarizer = options.get('binarizer')(**options.potential('binarizer'))
         redoBinarizeImage = targetChanged or binarizerChanged
         if redoBinarizeImage:
             options.showStatus("Binarizing image")
@@ -37,7 +40,7 @@ class OCRRunner:
         segmenterChanged = self.varChanged('segmenter', options)
         if segmenterChanged:
             options.showStatus("Initializing segmenter")
-            self.segmenter = options.segmenter()
+            self.segmenter = options.get('segmenter')()
         redoSegmentedImage = segmenterChanged or redoBinarizeImage
         if redoSegmentedImage:
             options.showStatus("Segmenting image")
@@ -45,10 +48,10 @@ class OCRRunner:
             if options.saveSegmented != None:
                 segVisual = self.segmenter.showSegments(self.blackAndWhite, self.characterPieces)
                 cv.SaveImage(options.saveSegmented, segVisual)
-        typesetterChanged = self.varChanged('typesetter', options) or self.varChanged('spaceWidth', options)
+        typesetterChanged = self.varChanged('typesetter', options) or self.varChanged('spaceWidth', options) or self.dependentVarChanged('typesetter', options)
         if typesetterChanged:
             options.showStatus("Initializing typesetter")
-            self.typesetter = options.typesetter(options.spaceWidth)
+            self.typesetter = options.get('typesetter')(options.spaceWidth, **options.potential('typesetter'))
         redoTypeset = typesetterChanged or redoSegmentedImage
         if redoTypeset:
             options.showStatus("Typesetting image")
@@ -59,7 +62,7 @@ class OCRRunner:
         scalerChanged = self.varChanged('scaler', options) or self.varChanged('dimension', options)
         if scalerChanged:
             options.showStatus("Initializing scaler")
-            self.scaler = options.scaler(options.dimension)
+            self.scaler = options.get('scaler')(options.dimension)
         redoScale = scalerChanged or redoTypeset
         if redoScale:
             options.showStatus("Scaling image")
@@ -67,10 +70,10 @@ class OCRRunner:
             def scaleAndRebinarize(image):
                 return bin.binarize(self.scaler.scale(image))
             self.scaled = self.toNonString(scaleAndRebinarize, self.pieces)
-        featureExtractorChanged = self.varChanged('featureExtractor', options)
+        featureExtractorChanged = self.varChanged('featureExtractor', options) or self.dependentVarChanged('featureExtractor', options)
         if featureExtractorChanged:
             options.showStatus("Initializing feature extractor")
-            self.featureExtractor = options.featureExtractor()
+            self.featureExtractor = options.get('featureExtractor')(**options.potential('featureExtractor'))
         redoFeatureExtractor = featureExtractorChanged or redoScale
         if redoFeatureExtractor:
             options.showStatus("Extracting features from image")
@@ -111,7 +114,7 @@ class OCRRunner:
         linguistChanged = self.varChanged('linguist', options)
         if linguistChanged:
             options.showStatus("Initializing linguist")
-            self.linguist = options.linguist()
+            self.linguist = options.get('linguist')()
         if linguistChanged or redoPossibilities:
             options.showStatus("Applying linguistic correction")
             self.output = self.linguist.correct(self.voteDict)
@@ -140,7 +143,15 @@ classMap = {
 }
 
 class Options:
-    pass
+    def potential(self, parent):
+        opts = {}
+        for opt in dependentOptions:
+            if opt.parent == parent and opt.parentValue == getattr(self, parent):
+                opts[opt.name] = getattr(self, opt.name, opt.default)
+        return opts
+    def get(self, attr):
+        return classMap[attr][getattr(self, attr)]
+
 defaultOptions = Options()
 defaultOptions.spaceWidth = .4
 defaultOptions.dimension = 100
@@ -158,25 +169,35 @@ defaultOptions.saveFeatures = None
 defaultOptions.saveMatcher = None
 defaultOptions.showStatus = lambda status: None
 
-def processOptions(options, parser=None):
+class DependentOption:
+    def __init__(self, name, type, parent, parentValue, default):
+        self.name = name
+        self.type = type
+        self.parent = parent
+        self.parentValue = parentValue
+        self.default = default
+
+dependentOptions = [
+    DependentOption('lookback', int, 'typesetter', 'linear', 0),
+    DependentOption('backgroundWhiteLimit', float, 'binarizer', 'adaptive', .9),
+    DependentOption('proportion', float, 'binarizer', 'adaptive', .5),
+    DependentOption('fourierPoints', int, 'featureExtractor', 'fourier-descriptor', 8),
+    DependentOption('centroidTolerance', float, 'featureExtractor', 'fourier-descriptor', .1),
+    DependentOption('areaThreshold', float, 'featureExtractor', 'fourier-descriptor', 4),
+    DependentOption('filterFraction', float, 'featureExtractor', 'fourier-descriptor', .5)
+]
+
+for option in dependentOptions:
+    setattr(defaultOptions, option.name, option.default)
+
+def checkOptions(options, parser=None):
     newOptions = copy.copy(options)
     for option, possibilities in classMap.items():
         value = getattr(options, option)
-        if value in possibilities:
-            setattr(newOptions, option, possibilities[value])
-        else:
+        if value not in possibilities:
             if parser is not None:
                 parser.error("Bad option for %s: %s.\nAdmissible values: %s." % (option, value, ', '.join(possibilities)))
             else:
                 print "Bad option for %s: %s.\nAdmissible values: %s." % (option, value, ', '.join(possibilities))
                 sys.exit(1)
     return newOptions
-
-'''
-Options to add:
-- dimension (add to GUI)
-- typesetter tuning parameters
-- adaptive binarizer tuning parameters
-- Fourier descriptor tuning parameters
-How to expose UI-agnostic way of having dependent parameters?
-'''
