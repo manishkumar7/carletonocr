@@ -90,11 +90,25 @@ class FourierDescriptor(Features):
                              # or anything else.
     def visualize(self):
         vis = whiteImage(self.dimension)
+        allCurves = []
+        for pn in self.curves:
+            for curve in pn:
+                invX = numpy.fft.ifft(curve.fourierX) - curve.offset[0]
+                invY = numpy.fft.ifft(curve.fourierY) - curve.offset[1]
+                #new = numpy.zeros((int(invX.max())+1, int(invY.max())+1), int)
+                allCurves.append(numpy.column_stack((invX, invY)))
         positive, negative = self.curves
         for positiveCurve in positive:
             cv.Circle(vis, positiveCurve.centroid, 5, (0, 0, 255), -1)
         for negativeCurve in negative:
             cv.Circle(vis, positiveCurve.centroid, 5, (0, 255, 0), -1)
+        for curve in allCurves:
+            for pt in curve:
+                for i in xrange(4):
+                    for j in xrange(4):
+                        #try: new[int(pt[0])-i][int(pt[1])-j] = 255 
+                        try: cv.Set2D(vis, int(pt[0])-i, int(pt[1])-j, cv.CV_RGB(0,0,0))
+                        except cv.error: pass
         return vis
 
 def partition(list, predicate):
