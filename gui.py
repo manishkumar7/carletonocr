@@ -98,7 +98,7 @@ class OCRWindow(object):
         sizer = wx.BoxSizer(wx.VERTICAL)
         for opt in ocr.dependentOptions:
             if opt.parent == attr and opt.parentValue == getattr(self.options, attr):
-                self.entry(panel, sizer, opt.name, opt.name, opt.type)
+                self.entry(panel, sizer, opt.guiName(), opt.attrName(), opt.type)
         panel.SetSizer(sizer)
         panel.Layout()
         parent.Layout()
@@ -156,7 +156,6 @@ class OCRWindow(object):
         self.dropdown(frame, sizer, 'Binarizer', 'binarizer')
         self.dropdown(frame, sizer, 'Segmenter', 'segmenter')
         self.dropdown(frame, sizer, 'Typesetter', 'typesetter')
-        self.entry(frame, sizer, 'Width of space', 'spaceWidth', float)
         self.dropdown(frame, sizer, 'Feature extractor', 'featureExtractor')
         self.entry(frame, sizer, 'k nearest neighbors', 'k', int)
         self.dropdown(frame, sizer, 'Linguist', 'linguist')

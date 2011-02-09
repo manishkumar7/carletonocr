@@ -1,8 +1,6 @@
 import cv
 
 class Typesetter(object):
-    def __init__(self, spaceWidth):
-        self.spaceWidth = spaceWidth
     def typeset(self, characterPieces):
         return [character[1] for character in characterPieces]
     def showTypesetting(self, pieces):
@@ -74,7 +72,7 @@ def characterCombine(characterPieces):
 class LinearTypesetter(Typesetter):
 
     def __init__(self, spaceWidth, lookback):
-        Typesetter.__init__(self, spaceWidth)
+        self.spaceWidth = spaceWidth
         self.lookback = lookback
 
     def bestPieceBy(self, pieces, utility):

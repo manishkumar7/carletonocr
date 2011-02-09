@@ -48,10 +48,10 @@ class OCRRunner:
             if options.saveSegmented != None:
                 segVisual = self.segmenter.showSegments(self.blackAndWhite, self.characterPieces)
                 cv.SaveImage(options.saveSegmented, segVisual)
-        typesetterChanged = self.varChanged('typesetter', options) or self.varChanged('spaceWidth', options) or self.dependentVarChanged('typesetter', options)
+        typesetterChanged = self.varChanged('typesetter', options) or self.dependentVarChanged('typesetter', options)
         if typesetterChanged:
             options.showStatus("Initializing typesetter")
-            self.typesetter = options.get('typesetter')(options.spaceWidth, **options.potential('typesetter'))
+            self.typesetter = options.get('typesetter')(**options.potential('typesetter'))
         redoTypeset = typesetterChanged or redoSegmentedImage
         if redoTypeset:
             options.showStatus("Typesetting image")
@@ -83,7 +83,7 @@ class OCRRunner:
                 cv.SaveImage(options.saveFeatures, featuresVisual)
         libraryChanged = not hasattr(self, 'rawLibrary')
         if libraryChanged:
-            options.showStatus("Loading image files for library")
+            options.showStatus("Generating image files for library")
             self.rawLibrary = extract.buildLibrary()
         redoLibraryScale = libraryChanged or scalerChanged
         if redoLibraryScale:
@@ -147,7 +147,7 @@ class Options:
         opts = {}
         for opt in dependentOptions:
             if opt.parent == parent and opt.parentValue == getattr(self, parent):
-                opts[opt.name] = getattr(self, opt.name, opt.default)
+                opts[opt.attrName()] = getattr(self, opt.attrName(), opt.default)
         return opts
     def get(self, attr):
         return classMap[attr][getattr(self, attr)]
@@ -170,25 +170,34 @@ defaultOptions.saveMatcher = None
 defaultOptions.showStatus = lambda status: None
 
 class DependentOption:
-    def __init__(self, name, type, parent, parentValue, default):
+    def __init__(self, name, type, parent, parentValue, default, help=None):
         self.name = name
         self.type = type
         self.parent = parent
         self.parentValue = parentValue
         self.default = default
+        self.help = help or self.guiName()
+    def cliName(self):
+        return self.name.replace(' ', '-')
+    def guiName(self):
+        return self.name[0].upper() + self.name[1:]
+    def attrName(self):
+        pieces = self.name.split(' ')
+        return pieces[0]+''.join(name[0].upper()+name[1:] for name in pieces[1:])
 
 dependentOptions = [
     DependentOption('lookback', int, 'typesetter', 'linear', 0),
-    DependentOption('backgroundWhiteLimit', float, 'binarizer', 'adaptive', .9),
+    DependentOption('space width', float, 'typesetter', 'linear', 0.4, "What proportion of the average character width is the width of a space"),
+    DependentOption('background white limit', float, 'binarizer', 'adaptive', .9),
     DependentOption('proportion', float, 'binarizer', 'adaptive', .5),
-    DependentOption('fourierPoints', int, 'featureExtractor', 'fourier-descriptor', 8),
-    DependentOption('centroidTolerance', float, 'featureExtractor', 'fourier-descriptor', .1),
-    DependentOption('areaThreshold', float, 'featureExtractor', 'fourier-descriptor', 4),
-    DependentOption('filterFraction', float, 'featureExtractor', 'fourier-descriptor', .5)
+    DependentOption('fourier points', int, 'featureExtractor', 'fourier-descriptor', 8),
+    DependentOption('centroid tolerance', float, 'featureExtractor', 'fourier-descriptor', .1),
+    DependentOption('area threshold', float, 'featureExtractor', 'fourier-descriptor', 4),
+    DependentOption('filter fraction', float, 'featureExtractor', 'fourier-descriptor', .5)
 ]
 
 for option in dependentOptions:
-    setattr(defaultOptions, option.name, option.default)
+    setattr(defaultOptions, option.attrName(), option.default)
 
 def checkOptions(options, parser=None):
     newOptions = copy.copy(options)
