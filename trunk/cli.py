@@ -5,6 +5,7 @@ Command-line interface for optical character recognition system
 import optparse
 import ocr
 import sys
+import copy
 
 def main():
     options, parser = getOptions()
@@ -26,7 +27,6 @@ def getOptions():
 
     parser = optparse.OptionParser(usage="usage: %prog [options] image", version="%prog 0.1")
 
-    addOption('--space-width', 'spaceWidth', type='float', help="What proportion of the average character width is the width of a space")
     addOption('--dimension', 'dimension', type='int', help="Dimension of square scaled image within the template matcher")
     addOption('-k', 'k', type='int', help="How many templates should vote on which character is chosen. k=1 means the single most similar template determines the character.")
 
@@ -45,6 +45,9 @@ def getOptions():
 
     parser.add_option('--verbose', action="store_true", dest='showStatus', help='Enable verbose output')
 
+    for option in ocr.dependentOptions:
+        addOption('--'+option.cliName(), option.attrName(), type=option.type.__name__, help=option.help + ". This option is only meaningful if %s is set to %s" % (option.parent, option.parentValue))
+
     (options, args) = parser.parse_args()
 
     # Assure the right number of positional arguments
@@ -60,7 +63,12 @@ def getOptions():
     else:
         options.showStatus = ocr.defaultOptions.showStatus
 
-    return options, parser
+    #pretend these three gross lines aren't there
+    realOptions = copy.copy(ocr.defaultOptions)
+    for attr in (at for at in dir(options) if '_' not in at):
+        setattr(realOptions, attr, getattr(options, attr))
+
+    return realOptions, parser
 
 if __name__ == "__main__":
     main()
