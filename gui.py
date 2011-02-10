@@ -186,6 +186,7 @@ class OCRWindow(object):
         self.dropdown(frame, sizer, 'Feature extractor', 'featureExtractor')
         self.entry(frame, sizer, 'k nearest neighbors', 'k', int)
         self.dropdown(frame, sizer, 'Linguist', 'linguist')
+        self.entry(frame, sizer, 'Linguist weight', 'selfImportance', float)
         owlPanel = wx.Panel(parent=frame)
         self.owl = ImagePanel(owlPanel, wx.ALIGN_RIGHT)
         def depress(*args):
