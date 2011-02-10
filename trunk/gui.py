@@ -125,6 +125,7 @@ class OCRWindow(object):
         panel.SetSizer(sizer)
         panel.Layout()
         parent.Layout()
+        self.owl.resize()
 
     def dropdown(self, parent, sizer, name, attr):
         dependentOptions = wx.Panel(parent=parent)
