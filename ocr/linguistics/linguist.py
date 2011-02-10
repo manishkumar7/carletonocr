@@ -20,7 +20,7 @@ class Linguist(object):
         
     def correct(self, characterPossibilities):
         '''Correct errors based on linguistic knowledge'''
-        print characterPossibilities
+        #print characterPossibilities
         output = ''
         context = self.makeContext()
         for item in characterPossibilities:
@@ -45,7 +45,7 @@ class Linguist(object):
         pass
     
     def modelProbability(self, character, context):
-        return 0
+        return 1
     
     def probability(self, oldProb, newProb):
         return negativeLog(oldProb)*(1-self.selfImportance) + negativeLog(newProb)*self.selfImportance 
@@ -67,9 +67,11 @@ class NGramLinguist(Linguist):
     
     def modelProbability(self, character, context):
         try:
-            return self.model.prob(character, context)
+            probability = self.model.prob(character, context)
         except ZeroDivisionError:
-            return 0
+            probability = 0
+        print 'the probability of', character, 'given', context, 'is', probability
+        return probability
 
 if __name__ == '__main__':
     ngl = NGramLinguist(''.join(brown.words()[:10000]), 3, .5)
