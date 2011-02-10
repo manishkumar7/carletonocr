@@ -1,10 +1,11 @@
 import numpy
 import cv
 from feature_extractor import *
+from scaler import ProportionalScaler
 import math
 import operator
 
-FOURIER_POINTS = 8
+FOURIER_POINTS = 16 
 TOLERANCE = .1
 AREA_THRESHOLD = 4
 CENTROID_THRESHOLD = 0
@@ -30,7 +31,7 @@ class FourierDescriptor(Features):
         def __init__(self, ordinal, offset, points):
             self.ordinal = ordinal
             self.offset = offset
-            print "I am a curve and my offset is", offset, "and my ordinal is", ordinal
+            #print "I am a curve and my offset is", offset, "and my ordinal is", ordinal
             self.points = points
             self.fourierX = self.fourier(points, 0)
             self.fourierY = self.fourier(points, 1)
@@ -89,27 +90,43 @@ class FourierDescriptor(Features):
         return diffX + diffY # Don't think the paper specifies if this should be an average
                              # or anything else.
     def visualize(self):
-        vis = whiteImage(self.dimension)
+        x = 0
+        y = 0
         allCurves = []
+        print self.curves
         for pn in self.curves:
             for curve in pn:
                 invX = numpy.fft.ifft(curve.fourierX) - curve.offset[0]
                 invY = numpy.fft.ifft(curve.fourierY) - curve.offset[1]
                 #new = numpy.zeros((int(invX.max())+1, int(invY.max())+1), int)
+                if invX.max()+1>x: x = invX.max()+1
+                if invY.max()+1>y: y = invY.max()+1
                 allCurves.append(numpy.column_stack((invX, invY)))
         positive, negative = self.curves
-        for positiveCurve in positive:
-            cv.Circle(vis, positiveCurve.centroid, 5, (0, 0, 255), -1)
-        for negativeCurve in negative:
-            cv.Circle(vis, positiveCurve.centroid, 5, (0, 255, 0), -1)
+        new = numpy.zeros((int(x)+10, int(y)+10), int)
         for curve in allCurves:
             for pt in curve:
                 for i in xrange(4):
                     for j in xrange(4):
+                        new[int(pt[0])-i][int(pt[1])-j] = 255 
                         #try: new[int(pt[0])-i][int(pt[1])-j] = 255 
-                        try: cv.Set2D(vis, int(pt[0])-i, int(pt[1])-j, cv.CV_RGB(0,0,0))
-                        except cv.error: pass
-        return vis
+                        #except IndexError: pass
+        new = new^255
+        # It should not take this many steps to do this OpenCV >:(
+        vis = cv.fromarray(new)
+        scaled = cv.fromarray(numpy.zeros(self.dimension, int)) 
+        depthed = cv.CreateImage(self.dimension, 8, 1)
+        rgb = whiteImage(self.dimension)
+        cv.Resize(vis, scaled, interpolation=cv.CV_INTER_NN)
+        cv.ConvertScale(scaled, depthed)
+        cv.MixChannels([depthed], [rgb], [(0,0),(0,1),(0,2)] )
+        for positiveCurve in positive:
+            ordinal = tuple(map(int, positiveCurve.offset))
+            cv.Circle(rgb, ordinal, 5, (0, 0, 255), -1)
+        for negativeCurve in negative:
+            ordinal = tuple(map(int, negativeCurve.offset))
+            cv.Circle(rgb, ordinal, 5, (0, 255, 0), -1)
+        return rgb 
 
 def partition(list, predicate):
     yes, no = [], []
@@ -147,12 +164,15 @@ def contourArea(points):
                         
 
 class FourierComparison(FeatureExtractor):
+    def __init__(self):
+        pass
+
     class Curve(object):
         def __init__(self, points):
             self.points = points
             self.centroid = averagePoint(points)
             self.area = contourArea(points)
-            print "I am the other type of curve and my centroid is", self.centroid, "and my area is ", self.area
+            #print "I am the other type of curve and my centroid is", self.centroid, "and my area is ", self.area
  
     def averageCentroid(self, data):
         if data:
