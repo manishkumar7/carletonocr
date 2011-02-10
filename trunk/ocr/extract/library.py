@@ -10,7 +10,6 @@ charsToGenerate = map(chr, range(ord('!'), ord('~')+1))
 def trim(im, border):
     bg = Image.new(im.mode, im.size, border)
     diff = ImageChops.difference(im, bg)
-    diff.save("lib2.png")
     bbox = diff.getbbox()
     if bbox:
         return im.crop(bbox)
@@ -22,10 +21,14 @@ def render(font, char):
     font = ImageFont.truetype('/Library/Fonts/'+font+'.ttf', pointSize)
     im = Image.new("L", (20, 20), 255)
     draw = ImageDraw.Draw(im)
-    size = draw.textsize(char, font=font)
-    im = im.resize(size)
+    width, height = draw.textsize(char, font=font)
+    lines = char.split('\n')
+    im = im.resize((width, height*len(lines)))
     draw = ImageDraw.Draw(im)
-    draw.text((0,0), char, font=font)
+    y = 0
+    for line in lines:
+        draw.text((0,y), line, font=font)
+        y += height
     im = trim(im, 255)
     cv_im = cv.CreateImageHeader(im.size, cv.IPL_DEPTH_8U, 1)
     cv.SetData(cv_im, im.tostring())
