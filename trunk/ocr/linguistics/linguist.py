@@ -2,6 +2,8 @@ import math
 import socket, os, signal, sys
 import time
 import random
+from nltk.corpus import brown
+import itertools
 
 INFINITY = 1000000
 
@@ -12,13 +14,14 @@ def negativeLog(n):
         return -math.log(n)
 
 class Linguist(object):
+    def __init__(self, selfImportance):
+        self.selfImportance = selfImportance
+
+class StreamLinguist(Linguist):
     #Future subclasses:
     #n-grams (for words and for characters) -- would need library
     #Deeper linguistic knowledge?
-    
-    def __init__(self, selfImportance):
-        self.selfImportance = selfImportance
-        
+
     def correct(self, characterPossibilities):
         '''Correct errors based on linguistic knowledge'''
         #print characterPossibilities
@@ -27,6 +30,7 @@ class Linguist(object):
         for item in characterPossibilities:
             if isinstance(item, str):
                 output += item
+                context = self.makeContext()
             else:
                 maxProbability = 10*INFINITY
                 bestLetter = ''
@@ -38,25 +42,24 @@ class Linguist(object):
                 self.updateContext(context, bestLetter)
                 output += bestLetter
         return output
-    
-    def makeContext(self):
-        return None
-    
-    def updateContext(self, context, letter):
-        pass
-    
-    def modelProbability(self, character, context):
-        return 1
-    
+
     def probability(self, oldProb, newProb):
         return negativeLog(oldProb)*(1-self.selfImportance) + negativeLog(newProb)*self.selfImportance 
 
-PORT = 5319
+class NullLinguist(StreamLinguist):
 
-class NGramLinguist(Linguist):
+    def makeContext(self):
+        return None
 
+    def updateContext(self, context, letter):
+        pass
+
+    def modelProbability(self, character, context):
+        return 1
+
+class NGramLinguist(StreamLinguist):
     def __init__(self, selfImportance, lettersInNgram):
-        Linguist.__init__(self, selfImportance)
+        StreamLinguist.__init__(self, selfImportance)
         self.n = lettersInNgram
         self.port = random.randint(10000, 50000) #We should really retry if the port is taken, but this is unlikely
         self.server = os.spawnv(os.P_NOWAIT, 'ngram', ['ngram', '-server-port', str(self.port), '-lm', 'language-model.txt'])
@@ -88,3 +91,72 @@ class NGramLinguist(Linguist):
                     return 2**float(line)
                 except ValueError:
                     pass
+
+class SpellingLinguist(Linguist):
+
+    def __init__(self, selfImportance, lettersInNgram, editDistance):
+        Linguist.__init__(self, selfImportance)
+        dictionary = {}
+        words = brown.words()
+        for word in words:
+            dictionary[word] = dictionary.get(word, 0) + 1
+        self.dictionary = dictionary
+        self.count = len(words)
+        self.editDistance = editDistance
+        self.n = lettersInNgram
+
+    def backup(self):
+        if not hasattr(self, 'ngram'):
+            self.ngram = NGramLinguist(self.selfImportance, self.n)
+        return self.ngram
+
+    def correct(self, characterPossibilities):
+        output = []
+        word = []
+        for character in characterPossibilities:
+            if isinstance(character, str):
+                output.extend(self.correctWord(word))
+                word = []
+                output.append(character)
+            else:
+                word.append(character)
+        output.extend(self.correctWord(word))
+        return ''.join(output)
+
+    def correctWord(self, characterPossibilities):
+        candidates = []
+        def counted(iterable):
+            return itertools.izip(itertools.count(), iterable)
+
+        def extract(candidate):
+            letters, probabilities = zip(*[characterPossibilities[i][c] for (i, c) in counted(candidate)])
+            string = ''.join(letters)
+            if string in self.dictionary:
+                charactersProbability = sum(map(negativeLog, probabilities)) / len(string)
+                wordProbability = negativeLog(self.dictionary[string]/float(self.count))
+                probability = self.selfImportance*wordProbability + (1 - self.selfImportance)*charactersProbability
+                candidates.append((string, probability))
+
+        candidate = (0,)*len(characterPossibilities)
+        theseCandidates = set([candidate])
+        extract(candidate)
+        # This is a pretty stupid way to generate all the possibilities
+        # It makes twice as many newCandidates as it has to
+        # Do it smarter, wtihout the inner if statement testing set membership!
+        for i in range(self.editDistance):
+            nextCandidates = set()
+            for candidate in theseCandidates:
+                for i in range(len(candidate)):
+                    if candidate[i] < len(characterPossibilities[i])-1:
+                        newCandidate = list(candidate)
+                        newCandidate[i] += 1
+                        newCandidate = tuple(newCandidate)
+                        if newCandidate not in nextCandidates:
+                            extract(newCandidate)
+                            nextCandidates.add(newCandidate)
+            theseCandidates = nextCandidates
+
+        if candidates:
+            return [max(candidates, key=lambda c: c[1])[0]]
+        else:
+            return self.backup().correct(characterPossibilities)

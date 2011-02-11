@@ -47,7 +47,7 @@ def getOptions():
     parser.add_option('--verbose', action="store_true", dest='showStatus', help='Enable verbose output')
 
     for option in ocr.dependentOptions:
-        addOption('--'+option.cliName(), option.attrName(), type=option.type.__name__, help=option.help + ". This option is only meaningful if %s is set to %s" % (option.parent, option.parentValue))
+        addOption('--'+option.cliName(), option.attrName(), type=option.type.__name__, help=option.help + ". This option is only meaningful if %s is set to %s" % (option.parent, ' or '.join(option.parentValues)))
 
     (options, args) = parser.parse_args()
 
