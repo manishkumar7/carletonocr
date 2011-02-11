@@ -192,8 +192,7 @@ dependentOptions = [
     DependentOption('centroid tolerance', float, 'featureExtractor', 'fourier-descriptor', .1),
     DependentOption('area threshold', float, 'featureExtractor', 'fourier-descriptor', 4),
     DependentOption('filter fraction', float, 'featureExtractor', 'fourier-descriptor', .5),
-    DependentOption('brown corpus length', int, 'linguist', 'n-gram', 5000),
-    DependentOption('number of characters', int, 'linguist', 'n-gram', 3)
+    DependentOption('letters in ngram', float, 'linguist', 'n-gram', 3)
 ]
 
 for option in dependentOptions:
