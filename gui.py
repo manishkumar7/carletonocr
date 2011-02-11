@@ -227,6 +227,7 @@ class OCRWindow(object):
         frame = wx.Frame(None, title="Hoot! Optical Character Recognition", size=(1500, 700))
         frame.CreateStatusBar()
         def setStatus(status):
+            print status
             wx.CallAfter(frame.SetStatusText, status)
         self.options.showStatus = setStatus
         self.mainView(frame)
