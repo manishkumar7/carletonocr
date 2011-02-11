@@ -120,7 +120,7 @@ class OCRWindow(object):
         panel.DestroyChildren()
         sizer = wx.BoxSizer(wx.VERTICAL)
         for opt in ocr.dependentOptions:
-            if opt.parent == attr and opt.parentValue == getattr(self.options, attr):
+            if opt.parent == attr and getattr(self.options, attr) in opt.parentValues:
                 self.entry(panel, sizer, opt.guiName(), opt.attrName(), opt.type)
         panel.SetSizer(sizer)
         panel.Layout()

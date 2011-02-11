@@ -1,1 +1,1 @@
-from linguist import Linguist, NGramLinguist
+from linguist import NullLinguist, NGramLinguist, SpellingLinguist

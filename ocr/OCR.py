@@ -134,8 +134,9 @@ classMap = {
      },
     'scaler': {'proportional': extract.ProportionalScaler, 'simple': extract.Scaler},
     'linguist': {
-        'null': linguistics.Linguist,
-        'n-gram': linguistics.NGramLinguist
+        'null': linguistics.NullLinguist,
+        'n-gram': linguistics.NGramLinguist,
+        'spelling': linguistics.SpellingLinguist
     }
 }
 
@@ -143,7 +144,7 @@ class Options:
     def potential(self, parent):
         opts = {}
         for opt in dependentOptions:
-            if opt.parent == parent and opt.parentValue == getattr(self, parent):
+            if opt.parent == parent and getattr(self, parent) in opt.parentValues:
                 opts[opt.attrName()] = getattr(self, opt.attrName(), opt.default)
         return opts
     def get(self, attr, *args):
@@ -168,11 +169,11 @@ defaultOptions.saveMatcher = None
 defaultOptions.showStatus = lambda status: None
 
 class DependentOption:
-    def __init__(self, name, type, parent, parentValue, default, help=None):
+    def __init__(self, name, type, parent, parentValues, default, help=None):
         self.name = name
         self.type = type
         self.parent = parent
-        self.parentValue = parentValue
+        self.parentValues = parentValues
         self.default = default
         self.help = help or self.guiName()
     def cliName(self):
@@ -184,15 +185,16 @@ class DependentOption:
         return pieces[0]+''.join(name[0].upper()+name[1:] for name in pieces[1:])
 
 dependentOptions = [
-    DependentOption('lookback', int, 'typesetter', 'linear', 0),
-    DependentOption('space width', float, 'typesetter', 'linear', 0.4, "What proportion of the average character width is the width of a space"),
-    DependentOption('background white limit', float, 'binarizer', 'adaptive', .9),
-    DependentOption('proportion', float, 'binarizer', 'adaptive', .5),
-    DependentOption('fourier points', int, 'featureExtractor', 'fourier-descriptor', 8),
-    DependentOption('centroid tolerance', float, 'featureExtractor', 'fourier-descriptor', .1),
-    DependentOption('area threshold', float, 'featureExtractor', 'fourier-descriptor', 4),
-    DependentOption('filter fraction', float, 'featureExtractor', 'fourier-descriptor', .5),
-    DependentOption('letters in ngram', float, 'linguist', 'n-gram', 3)
+    DependentOption('lookback', int, 'typesetter', ['linear'], 0),
+    DependentOption('space width', float, 'typesetter', ['linear'], 0.4, "What proportion of the average character width is the width of a space"),
+    DependentOption('background white limit', float, 'binarizer', ['adaptive'], .9),
+    DependentOption('proportion', float, 'binarizer', ['adaptive'], .5),
+    DependentOption('fourier points', int, 'featureExtractor', ['fourier-descriptor'], 8),
+    DependentOption('centroid tolerance', float, 'featureExtractor', ['fourier-descriptor'], .1),
+    DependentOption('area threshold', float, 'featureExtractor', ['fourier-descriptor'], 4),
+    DependentOption('filter fraction', float, 'featureExtractor', ['fourier-descriptor'], .5),
+    DependentOption('letters in ngram', float, 'linguist', ['n-gram', 'spelling'], 3),
+    DependentOption('edit distance', int, 'linguist', ['spelling'], 3)
 ]
 
 for option in dependentOptions:
