@@ -6,10 +6,13 @@ import copy
 import random
 import threading
 import cv
+import time
 
 PADDING_WIDTH = 4
 
-OWL = "lemmling_Cartoon_owl.png"
+OWL = "lemmling_Cartoon_owl1.png"
+OWL_MID = "lemmling_Cartoon_owl2.png"
+OWL_HIGH = "lemmling_Cartoon_owl3.png"
 OWL_DOWN = "lemmling_Cartoon_owl_depressed.png"
 
 def name():
@@ -38,6 +41,12 @@ class ImagePanel:
             newWidth = int(imageWidth * (float(frameHeight) / imageHeight))
         image = self.image.Copy().Rescale(newWidth, newHeight).ConvertToBitmap()
         self.bitmap.SetBitmap(image)
+
+    def redo(self, path, sem=None):
+        self.reload(path)
+        self.resize()
+        if sem != None:
+            sem.release()
 
     def setText(self, text):
         filename = name()
@@ -222,6 +231,7 @@ class OCRWindow(object):
         self.options.saveFeatures = name()
         self.options.saveMatcher = name()
         self.options.target = None
+        self.flapWings = False
         self.entries = []
         self.app = wx.App()
         frame = wx.Frame(None, title="Hoot! Optical Character Recognition", size=(1500, 700))
@@ -243,20 +253,37 @@ class OCRWindow(object):
                 dialog.ShowModal()
                 dialog.Destroy()
                 return None
-        if self.options.target is not None:
-            thread = threading.Thread(target=self.runThread)
+        if self.options.target is None:
+            dialog = wx.MessageDialog(None, "No image selected", "Cannot update", wx.OK)
+            dialog.ShowModal()
+            dialog.Destroy()
+        else:
+            thread = threading.Thread(target=self.compute)
             thread.start()
+            self.flapWings = True
+            wingsThread = threading.Thread(target=self.doFlapWings)
+            wingsThread.start()
 
-    def runThread(self):
+    def compute(self):
         ocr.checkOptions(self.options)
         text = self.runner.withOptions(self.options)
         wx.CallAfter(self.updateComplete, text)
 
     def updateComplete(self, text):
+        self.flapWings = False
         self.hasBeenRun = True
         self.reloadPictures()
         self.output.setText(text)
         self.redrawPictures()
+
+    def doFlapWings(self):
+        sem = threading.Semaphore()
+        period = 1.0
+        while self.flapWings:
+            for owl in [OWL_MID, OWL_HIGH, OWL_MID, OWL]:
+                sem.acquire()
+                time.sleep(period/4)
+                wx.CallAfter(self.owl.redo, owl, sem)
 
     def reloadPictures(self):
         if self.options.target is not None:
