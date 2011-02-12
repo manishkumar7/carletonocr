@@ -22,7 +22,7 @@ class SimpleResult(object):
     def result(self):
         return self.string
     def visualize(self):
-        return extract.render("Arial", self.string) #Except this is unavailable the way things are set up
+        return 'I guess it\'s something like: '+self.string
 
 class Linguist(object):
     def __init__(self, selfImportance):
