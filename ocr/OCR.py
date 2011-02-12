@@ -3,7 +3,7 @@ import os
 import binarize, extract, linguistics, match, typeset, segment
 import copy
 
-class OCRRunner:
+class OCRRunner(object):
     def __init__(self):
         self.options = None
 
@@ -114,7 +114,10 @@ class OCRRunner:
             self.linguist = options.get('linguist', options.selfImportance)
         if linguistChanged or redoPossibilities:
             options.showStatus("Applying linguistic correction")
-            self.output = self.linguist.correct(self.voteDict)
+            linguistOutput = self.linguist.correct(self.voteDict)
+            self.output = linguistOutput.result()
+            if options.saveLinguist != None:
+                cv.SaveImage(options.saveLinguist, linguistOutput.visualize())
         self.options = copy.copy(options)
         options.showStatus("Complete")
         return self.output
@@ -166,6 +169,7 @@ defaultOptions.saveSegmented = None
 defaultOptions.saveTypeset = None
 defaultOptions.saveFeatures = None
 defaultOptions.saveMatcher = None
+defaultOptions.saveLinguist = None
 defaultOptions.showStatus = lambda status: None
 
 class DependentOption:

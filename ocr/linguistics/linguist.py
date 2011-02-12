@@ -5,6 +5,9 @@ import random
 from nltk.corpus import brown
 import itertools
 
+# Could we use hidden markov models with the ngram linguist to do a better job with the first character?
+# Could we run the ngram linguist and then apply the dictionary-based spelling correction for better results?
+
 INFINITY = 1000000
 
 def negativeLog(n):
@@ -12,6 +15,14 @@ def negativeLog(n):
         return INFINITY
     else:
         return -math.log(n)
+
+class SimpleResult(object):
+    def __init__(self, string):
+        self.string = string
+    def result(self):
+        return self.string
+    def visualize(self):
+        return extract.render("Arial", self.string) #Except this is unavailable the way things are set up
 
 class Linguist(object):
     def __init__(self, selfImportance):
@@ -41,7 +52,7 @@ class StreamLinguist(Linguist):
                         maxProbability = realProbability
                 self.updateContext(context, bestLetter)
                 output += bestLetter
-        return output
+        return SimpleResult(output)
 
     def probability(self, oldProb, newProb):
         return negativeLog(oldProb)*(1-self.selfImportance) + negativeLog(newProb)*self.selfImportance 
@@ -124,6 +135,7 @@ class SpellingLinguist(Linguist):
         return ''.join(output)
 
     def correctWord(self, characterPossibilities):
+        characterPossibilities = map(lambda lst: sorted(lst, key=lambda c: c[1], reverse=True), characterPossibilities)
         candidates = []
         def counted(iterable):
             return itertools.izip(itertools.count(), iterable)
@@ -157,6 +169,6 @@ class SpellingLinguist(Linguist):
             theseCandidates = nextCandidates
 
         if candidates:
-            return [max(candidates, key=lambda c: c[1])[0]]
+            return SimpleResult([max(candidates, key=lambda c: c[1])[0]])
         else:
             return self.backup().correct(characterPossibilities)
