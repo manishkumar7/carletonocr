@@ -13,30 +13,33 @@ FILTER_LENGTH = FOURIER_POINTS/2
 
 class FourierDescriptor(Features):
     class Curve(object):
+        def __init__(self, ordinal, offset, points, fourierPoints, filterLength):
+            self.ordinal = ordinal
+            self.offset = offset
+            #print "I am a curve and my offset is", offset, "and my ordinal is", ordinal
+            self.points = points
+            self.fourierPoints = fourierPoints
+            self.filterLength = filterLength
+            self.fourierX = self.fourier(points, 0)
+            self.fourierY = self.fourier(points, 1)
+
         def fourier(self, points, coordinate):
             # T-shift isn't implemented because I don't understand the actual math
             # However, I'm additionally not clear if it needs to be done per-comparison
             # or can be done once.
             points = [point[coordinate] for point in points]
             def interpolate(i):
-                index = len(points)*(float(i)/FOURIER_POINTS)
+                index = len(points)*(float(i)/self.fourierPoints)
                 before = int(math.floor(index))
                 after = int(math.ceil(index))
                 if after >= len(points):
                     return points[before]
                 else:
                     return int(points[before]*(index - before) + points[after]*(after - index))
-            interpolated = [interpolate(i) for i in range(FOURIER_POINTS)]
-            return numpy.fft.fft(interpolated)[:FILTER_LENGTH]
-        def __init__(self, ordinal, offset, points):
-            self.ordinal = ordinal
-            self.offset = offset
-            #print "I am a curve and my offset is", offset, "and my ordinal is", ordinal
-            self.points = points
-            self.fourierX = self.fourier(points, 0)
-            self.fourierY = self.fourier(points, 1)
+            interpolated = [interpolate(i) for i in range(self.fourierPoints)]
+            return numpy.fft.fft(interpolated)[:self.filterLength]
 
-    def __init__(self, difference, curves, dimension):
+    def __init__(self, difference, curves, dimension, tolerance):
         '''
         Centroids should be a list of coordinate pairs
         Fouriers should be a list of pairs of Fourier transforms of functions
@@ -45,6 +48,7 @@ class FourierDescriptor(Features):
         self.difference = difference
         self.curves = curves
         self.dimension = dimension
+        self.tolerance = tolerance
         
     def comparable(self, other):
         for myKind, yourKind in zip(self.curves, other.curves):
@@ -55,7 +59,7 @@ class FourierDescriptor(Features):
     def similarCoordinates(self, c1, c2):
         difference = [abs(c1[i]-c2[i]) for i in range(2)]
         for i in range(2):
-            if difference[i] > TOLERANCE * self.dimension[i]:
+            if difference[i] > self.tolerance * self.dimension[i]:
                 return sum(difference)
         return 0
 
@@ -89,7 +93,11 @@ class FourierDescriptor(Features):
                     zip(myCurve.fourierY[1:], yourCurve.fourierY[1:])]) 
         return diffX + diffY # Don't think the paper specifies if this should be an average
                              # or anything else.
+
     def visualize(self):
+        vis = cv.CreateImage((50, 50), 8, 3)
+        return vis
+        # I don't know if this code should work at all, so we're not running it for now
         x = 0
         y = 0
         allCurves = []
@@ -164,8 +172,11 @@ def contourArea(points):
                         
 
 class FourierComparison(FeatureExtractor):
-    def __init__(self):
-        pass
+    def __init__(self, fourierPoints, tolerance, areaThreshold, filterFraction):
+        self.fourierPoints = fourierPoints
+        self.tolerance = tolerance
+        self.areaThreshold = areaThreshold
+        self.filterLength = int(filterFraction * fourierPoints)
 
     class Curve(object):
         def __init__(self, points):
@@ -173,27 +184,27 @@ class FourierComparison(FeatureExtractor):
             self.centroid = averagePoint(points)
             self.area = contourArea(points)
             #print "I am the other type of curve and my centroid is", self.centroid, "and my area is ", self.area
- 
+
     def averageCentroid(self, data):
         if data:
             return averagePoint([curve.centroid for curve in data])
         return (0,0)
-    
+
     def sortOrdinals(self, data, imgDim):
         output = [([-1, -1], curve) for curve in data]
         sortedX = self.sortOrdinalCoords(data, 0, imgDim, output)
         sortedY = self.sortOrdinalCoords(data, 1, imgDim, output)
         return sorted(output, key=lambda pair: pair[0])
-        
+
     def sortOrdinalCoords(self, data, coord, imgDim, output):
         sortedOrds = sorted(zip(range(len(data)), data), key=lambda pair: pair[1].centroid[coord])
         ordinalOffset = 0
         for ordinal in range(len(sortedOrds)):
             output[sortedOrds[ordinal][0]][0][coord] = ordinal-ordinalOffset
-            if ordinal+1 < len(sortedOrds) and float(sortedOrds[ordinal+1][1].centroid[coord] - sortedOrds[ordinal][1].centroid[coord]) / imgDim[coord] < TOLERANCE:
+            if ordinal+1 < len(sortedOrds) and float(sortedOrds[ordinal+1][1].centroid[coord] - sortedOrds[ordinal][1].centroid[coord]) / imgDim[coord] < self.tolerance:
                 ordinalOffset += 1
         return output
-    
+
     def contours(self, image):
         unvisited = set((row, col) for col in range(image.width+1) for row in range(image.height+1))
         contours = []
@@ -214,7 +225,7 @@ class FourierComparison(FeatureExtractor):
                 assert addTuples(contour[-1],direction) == contour[0]
                 contours.append(contour)
         return contours
-    
+
     def direction(self, image, vertex):
         #print 'finding the direction from', vertex
         offsets = [(0, 0), (-1, 0), (-1, -1), (0, -1)]
@@ -237,7 +248,7 @@ class FourierComparison(FeatureExtractor):
             print 'vertex', vertex
             print 'values', [(lookup(i), offsets[i]) for i in range(4)]
             raise Exception("The image has not been correctly prepared")
-        
+
     def broaden(self, image):
         #print 'broadening'
         dst = cv.CreateImage((image.width, image.height), 8, 1)
@@ -257,7 +268,7 @@ class FourierComparison(FeatureExtractor):
                            keepGoing = True
         #print 'broadened'
         return dst
-    
+
     def extract(self, image):
         image = self.broaden(image)
         contours = self.contours(image)
@@ -268,7 +279,7 @@ class FourierComparison(FeatureExtractor):
         curveAggregate = []
         for kind in curveKinds:
             ordinals = self.sortOrdinals(kind, (image.width, image.height))
-            curves = [FourierDescriptor.Curve(ordinal, minusTuples(curve.centroid, displacement), curve.points) for (ordinal, curve) in ordinals]
+            curves = [FourierDescriptor.Curve(ordinal, minusTuples(curve.centroid, displacement), curve.points, self.fourierPoints, self.filterLength) for (ordinal, curve) in ordinals]
             curveAggregate.append(curves)
-        return FourierDescriptor(displacement, curveAggregate, (image.width, image.height))
+        return FourierDescriptor(displacement, curveAggregate, (image.width, image.height), self.tolerance)
 

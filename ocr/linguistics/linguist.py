@@ -132,7 +132,7 @@ class SpellingLinguist(Linguist):
             else:
                 word.append(character)
         output.extend(self.correctWord(word))
-        return ''.join(output)
+        return SimpleResult(''.join(output))
 
     def correctWord(self, characterPossibilities):
         characterPossibilities = map(lambda lst: sorted(lst, key=lambda c: c[1], reverse=True), characterPossibilities)
@@ -169,6 +169,6 @@ class SpellingLinguist(Linguist):
             theseCandidates = nextCandidates
 
         if candidates:
-            return SimpleResult([max(candidates, key=lambda c: c[1])[0]])
+            return [max(candidates, key=lambda c: c[1])[0]]
         else:
-            return self.backup().correct(characterPossibilities)
+            return self.backup().correct(characterPossibilities).result()
