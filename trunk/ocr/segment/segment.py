@@ -24,7 +24,9 @@ class Segmenter:
         				segVisual[box[1]+row, box[0]+col] = (0,0,0)
         	cv.Rectangle(segVisual, (box[0],box[1]), (box[0]+box[2],box[1]+box[3]), cv.RGB(0, 200, 0), 1, 8)        
         return segVisual
-    
+
+AREA_THRESHOLD = 10
+
 class ConnectedComponentSegmenter(Segmenter):
     
     def segment(self, blackAndWhite):
@@ -33,7 +35,9 @@ class ConnectedComponentSegmenter(Segmenter):
         while pixels:
             pixel = pixels.pop()
             if blackAndWhite[pixel] == 0:
-                 output.append(self.findConnectedComponents(blackAndWhite, pixel, pixels))
+                 component = self.findConnectedComponents(blackAndWhite, pixel, pixels)
+                 if component != None:
+                    output.append(component)
         return output
     
     def findConnectedComponents(self, image, pixel, pixels):
@@ -53,6 +57,8 @@ class ConnectedComponentSegmenter(Segmenter):
                     adjacentPoints.add(p)
             points |= adjacentPoints
             pointsToSearch.extend(list(adjacentPoints))
+        if len(points) < AREA_THRESHOLD:
+            return None
         for point in points:
             if point in pixels:
                 pixels.remove(point)
