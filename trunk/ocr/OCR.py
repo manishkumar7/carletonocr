@@ -117,7 +117,7 @@ class OCRRunner(object):
             linguistOutput = self.linguist.correct(self.voteDict)
             self.output = linguistOutput.result()
             if options.saveLinguist != None:
-                cv.SaveImage(options.saveLinguist, linguistOutput.visualize())
+                cv.SaveImage(options.saveLinguist, extract.render("Arial", linguistOutput.visualize()))
         self.options = copy.copy(options)
         options.showStatus("Complete")
         return self.output

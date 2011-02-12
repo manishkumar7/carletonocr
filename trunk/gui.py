@@ -159,11 +159,12 @@ class OCRWindow(object):
         notebook = wx.aui.AuiNotebook(parent, style=wx.aui.AUI_NB_TOP)
         tabParameters = [
             ('image', "Original"),
-            ('binarized', "Binary"),
-            ('segmented', "Segmented"),
-            ('typesetter', "Typeset"),
-            ('features', "Features"),
-            ('matcher', "Matched"),
+            ('binarized', "Binarizer"),
+            ('segmented', "Segmenter"),
+            ('typesetter', "Typesetting"),
+            ('features', "Feature extractor"),
+            ('matcher', "Matcher"),
+            ('linguist', "Linguist"),
             ('output', "Final output")
         ]
         for attr, name in tabParameters:
@@ -230,6 +231,7 @@ class OCRWindow(object):
         self.options.saveTypeset = name()
         self.options.saveFeatures = name()
         self.options.saveMatcher = name()
+        self.options.saveLinguist = name()
         self.options.target = None
         self.flapWings = False
         self.entries = []
@@ -294,6 +296,7 @@ class OCRWindow(object):
                 self.typesetter.reload(self.options.saveTypeset)
                 self.features.reload(self.options.saveFeatures)
                 self.matcher.reload(self.options.saveMatcher)
+                self.linguist.reload(self.options.saveLinguist)
 
     def redrawPictures(self):
         if hasattr(self, 'owl') and hasattr(self.owl, 'image'):
@@ -304,6 +307,7 @@ class OCRWindow(object):
             self.typesetter.resize()
             self.features.resize()
             self.matcher.resize()
+            self.linguist.resize()
             self.output.resize()
 
 if __name__ == '__main__':
