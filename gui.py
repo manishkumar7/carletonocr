@@ -1,49 +1,12 @@
 import wx
 import wx.aui
 import os
-import ocr.extract
+import ocr
 import copy
 import random
 import threading
-import cv
 
 PADDING_WIDTH = 4
-
-OWL = "lemmling_Cartoon_owl.png"
-OWL_DOWN = "lemmling_Cartoon_owl_depressed.png"
-
-def name():
-    return '/tmp/'+str(random.randint(1000, 1000000))+'.png'
-
-class ImagePanel:
-    def __init__(self, panel, side=wx.ALIGN_LEFT):
-        self.panel = panel
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        bitmap = wx.StaticBitmap(panel)
-        sizer.Add(bitmap, flag=side)
-        panel.SetSizer(sizer)
-        self.bitmap = bitmap
-
-    def reload(self, path):
-        self.image = wx.Image(path)
-
-    def resize(self):
-        frameWidth, frameHeight = self.panel.GetClientSizeTuple()
-        imageWidth, imageHeight = self.image.GetSize().Get()
-        if float(imageWidth)/imageHeight > float(frameWidth)/frameHeight:
-            newWidth = frameWidth
-            newHeight = int(imageHeight * (float(frameWidth) / imageWidth))
-        else:
-            newHeight = frameHeight
-            newWidth = int(imageWidth * (float(frameHeight) / imageHeight))
-        image = self.image.Copy().Rescale(newWidth, newHeight).ConvertToBitmap()
-        self.bitmap.SetBitmap(image)
-
-    def setText(self, text):
-        filename = name()
-        cv_im = ocr.extract.render("Arial", text)
-        cv.SaveImage(filename, cv_im)
-        self.reload(filename)
 
 class OCRWindow(object):
 
@@ -58,6 +21,20 @@ class OCRWindow(object):
         panel.SetSizer(innerSizer)
         if sizer is not None: sizer.Add(panel, 0, wx.EXPAND)
         return panel
+
+    def replaceImage(self, panel, path):
+        frameWidth, frameHeight = panel.GetClientSizeTuple()
+        image = wx.Image(path) 
+        imageWidth, imageHeight = image.GetSize().Get()
+        if float(imageWidth)/imageHeight > float(frameWidth)/frameHeight:
+            newWidth = frameWidth
+            newHeight = int(imageHeight * (float(frameWidth) / imageWidth))
+        else:
+            newHeight = frameHeight
+            newWidth = int(imageWidth * (float(frameHeight) / imageHeight))
+        image = image.Rescale(newWidth, newHeight).ConvertToBitmap()
+        panel.DestroyChildren()
+        wx.StaticBitmap(panel).SetBitmap(image)
 
     def replaceText(self, panel, text, huge=False):
         panel.DestroyChildren()
@@ -120,13 +97,11 @@ class OCRWindow(object):
         panel.DestroyChildren()
         sizer = wx.BoxSizer(wx.VERTICAL)
         for opt in ocr.dependentOptions:
-            if opt.parent == attr and getattr(self.options, attr) in opt.parentValues:
+            if opt.parent == attr and opt.parentValue == getattr(self.options, attr):
                 self.entry(panel, sizer, opt.guiName(), opt.attrName(), opt.type)
         panel.SetSizer(sizer)
         panel.Layout()
         parent.Layout()
-        if hasattr(self, 'owl') and hasattr(self.owl, 'image'):
-            self.owl.resize()
 
     def dropdown(self, parent, sizer, name, attr):
         dependentOptions = wx.Panel(parent=parent)
@@ -158,14 +133,13 @@ class OCRWindow(object):
             ('output', "Final output")
         ]
         for attr, name in tabParameters:
-            pass
-            panel = wx.Panel(parent=notebook)
-            imagePanel = ImagePanel(panel)
-            setattr(self, attr, imagePanel)
-            imagePanel.setText("No image loaded for %s" % attr)
-            notebook.AddPage(panel, name)
+            textPanel = wx.Panel(parent=notebook)
+            setattr(self, attr, textPanel)
+            self.replaceText(textPanel, "No image loaded for %s" % attr)
+            notebook.AddPage(textPanel, name)
         def redraw(*args):
-            self.redrawPictures()
+            if self.options.target is not None:
+                self.redrawPictures()
         notebook.Bind(wx.EVT_SIZE, redraw)
         return notebook
 
@@ -176,8 +150,7 @@ class OCRWindow(object):
         frame = wx.Panel(parent=outerFrame)
         sizer = wx.BoxSizer(wx.VERTICAL)
         def updateFile():
-            self.image.reload(self.options.target)
-            self.image.resize()
+            self.replaceImage(self.image, self.options.target)
         self.chooseFile(frame, sizer, "target", "No file loaded", "Choose file", callback=updateFile)
         self.entry(frame, sizer, 'Internal dimension of characters', 'dimension', int)
         self.dropdown(frame, sizer, 'Binarizer', 'binarizer')
@@ -186,20 +159,12 @@ class OCRWindow(object):
         self.dropdown(frame, sizer, 'Feature extractor', 'featureExtractor')
         self.entry(frame, sizer, 'k nearest neighbors', 'k', int)
         self.dropdown(frame, sizer, 'Linguist', 'linguist')
-        self.entry(frame, sizer, 'Linguist weight', 'selfImportance', float)
-        owlPanel = wx.Panel(parent=frame)
-        self.owl = ImagePanel(owlPanel, wx.ALIGN_RIGHT)
-        def depress(*args):
-            self.owl.reload(OWL_DOWN)
-            self.owl.resize()
-        self.app.Bind(wx.EVT_LEFT_DOWN, depress, self.owl.bitmap)
+        sizer.AddStretchSpacer()
+        updateButton = wx.Button(parent=frame, label="Update")
         def doUpdate(*args):
-            self.owl.reload(OWL)
-            self.owl.resize()
             self.update()
-        self.app.Bind(wx.EVT_LEFT_UP, doUpdate, self.owl.bitmap)
-        self.owl.reload(OWL) 
-        sizer.Add(owlPanel, 1, wx.EXPAND)
+        self.app.Bind(wx.EVT_BUTTON, doUpdate, updateButton)
+        sizer.Add(updateButton, flag=wx.ALIGN_RIGHT)
         sizer.AddSpacer(PADDING_WIDTH)
         frame.SetSizer(sizer)
         outerSizer.Add(frame, 1, wx.EXPAND)
@@ -216,6 +181,8 @@ class OCRWindow(object):
         self.hasBeenRun = False
         self.options = copy.copy(ocr.defaultOptions)
         self.runner = ocr.OCRRunner()
+        def name():
+        	return '/tmp/'+str(random.randint(1000, 1000000))+'.png'
         self.options.saveBinarized = name()
         self.options.saveSegmented = name()
         self.options.saveTypeset = name()
@@ -224,15 +191,13 @@ class OCRWindow(object):
         self.options.target = None
         self.entries = []
         self.app = wx.App()
-        frame = wx.Frame(None, title="Hoot! Optical Character Recognition", size=(1500, 700))
+        frame = wx.Frame(None, title="Optical Character Recognition", size=(1500, 700))
         frame.CreateStatusBar()
         def setStatus(status):
-            print status
             wx.CallAfter(frame.SetStatusText, status)
         self.options.showStatus = setStatus
         self.mainView(frame)
         frame.Show()
-        self.owl.resize()
         self.app.MainLoop()
 
     def update(self):
@@ -254,30 +219,17 @@ class OCRWindow(object):
 
     def updateComplete(self, text):
         self.hasBeenRun = True
-        self.reloadPictures()
-        self.output.setText(text)
         self.redrawPictures()
-
-    def reloadPictures(self):
-        if self.options.target is not None:
-            self.image.reload(self.options.target)
-            if self.hasBeenRun:
-                self.binarized.reload(self.options.saveBinarized)
-                self.segmented.reload(self.options.saveSegmented)
-                self.typesetter.reload(self.options.saveTypeset)
-                self.features.reload(self.options.saveFeatures)
-                self.matcher.reload(self.options.saveMatcher)
+        self.replaceText(self.output, text, huge=True)
 
     def redrawPictures(self):
-        if hasattr(self, 'owl') and hasattr(self.owl, 'image'):
-            self.owl.resize()
-            self.image.resize()
-            self.binarized.resize()
-            self.segmented.resize()
-            self.typesetter.resize()
-            self.features.resize()
-            self.matcher.resize()
-            self.output.resize()
+        self.replaceImage(self.image, self.options.target)
+        if self.hasBeenRun:
+            self.replaceImage(self.binarized, self.options.saveBinarized)
+            self.replaceImage(self.segmented, self.options.saveSegmented)
+            self.replaceImage(self.typesetter, self.options.saveTypeset)
+            self.replaceImage(self.features, self.options.saveFeatures)
+            self.replaceImage(self.matcher, self.options.saveMatcher)
 
 if __name__ == '__main__':
     OCRWindow()

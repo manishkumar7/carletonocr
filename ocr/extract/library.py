@@ -3,9 +3,11 @@ import os
 from ocr.typeset import characterCombine
 import Image, ImageFont, ImageDraw, ImageChops
 
-fonts = ["Times New Roman", "Arial", "Courier New", "Georgia", "Verdana", "Tahoma"]
+#fonts = ["Times New Roman", "Arial", "Courier New", "Georgia", "Verdana", "Tahoma"]
+fonts = ['times']
 pointSize = 100
 charsToGenerate = map(chr, range(ord('!'), ord('~')+1))
+#charsToGenerate = 'foz'
 
 def trim(im, border):
     bg = Image.new(im.mode, im.size, border)
@@ -18,7 +20,8 @@ def trim(im, border):
         raise ValueError("cannot trim; image was empty")
 
 def render(font, char):
-    font = ImageFont.truetype('/Library/Fonts/'+font+'.ttf', pointSize)
+    font = ImageFont.truetype('/usr/share/fonts/TTF/'+font+'.ttf', pointSize)
+    #font = ImageFont.truetype('/Library/Fonts/'+font+'.ttf', pointSize)
     im = Image.new("L", (20, 20), 255)
     draw = ImageDraw.Draw(im)
     width, height = draw.textsize(char, font=font)

@@ -5,22 +5,19 @@ class knnMatcher(object):
     def __init__(self, library, k):
         self.k = k
         self.library = library
-        self.templFeatures = []
 
     def bestFew(self, charFeatures):
         '''Finds the best match according to '.similarity()' and returns it'''
         best = []
-        sum = 0.0
         #We keep track of features now for the visualization
         for character, features in self.library:
             similarity = charFeatures.similarity(features)
-            sum += similarity
             if len(best) < self.k:
                 heapq.heappush(best, (similarity, character, features))
             elif similarity > best[0][0]:
                 heapq.heappop(best)
                 heapq.heappush(best, (similarity, character, features))
-        return [(similarity/sum, character, features) for (similarity, character, features) in best]
+        return best
 
     def voteDict(self, best):
         voteDict = {}

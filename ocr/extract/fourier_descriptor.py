@@ -4,6 +4,10 @@ from feature_extractor import *
 from scaler import ProportionalScaler
 import math
 import operator
+import subprocess
+#import cStringIO
+import tempfile
+import Image
 
 FOURIER_POINTS = 16 
 TOLERANCE = .1
@@ -168,10 +172,11 @@ class FourierComparison(FeatureExtractor):
         pass
 
     class Curve(object):
-        def __init__(self, points):
-            self.points = points
-            self.centroid = averagePoint(points)
-            self.area = contourArea(points)
+        def __init__(self, contour):
+            self.points = contour[0]
+            self.centroid = averagePoint(contour[0])
+            #self.area = contourArea(points)
+            self.area = contour[1]
             #print "I am the other type of curve and my centroid is", self.centroid, "and my area is ", self.area
  
     def averageCentroid(self, data):
@@ -224,9 +229,9 @@ class FourierComparison(FeatureExtractor):
             if coordinate[0] < 0 or coordinate[1] < 0 or coordinate[0] >= image.height or coordinate[1] >= image.width:
                 return 255
             return image[coordinate]
-        for i in range(4):
-            v = addTuples(vertex, offsets[i])
-            #print 'at pixel', v, 'the pixel is', lookup(i)
+        #for i in range(4):
+        #    v = addTuples(vertex, offsets[i])
+        #    #print 'at pixel', v, 'the pixel is', lookup(i)
         candidates = [d for i, d in zip(range(len(offsets)), direction) if lookup(i) == 255 and lookup(i+1) == 0]
         if len(candidates) == 0:
             return (0, 0)
@@ -237,10 +242,14 @@ class FourierComparison(FeatureExtractor):
             print 'vertex', vertex
             print 'values', [(lookup(i), offsets[i]) for i in range(4)]
             raise Exception("The image has not been correctly prepared")
+
+    def directionNumpy(self, image, vertex):
+        pass
         
     def broaden(self, image):
         #print 'broadening'
         dst = cv.CreateImage((image.width, image.height), 8, 1)
+        #dst = cv.CreateMat(image.width, image.height, cv.CV_8UC1)
         cv.Copy(image, dst)
         keepGoing = True
         while keepGoing:
@@ -259,10 +268,19 @@ class FourierComparison(FeatureExtractor):
         return dst
     
     def extract(self, image):
-        image = self.broaden(image)
-        contours = self.contours(image)
-        data = [FourierComparison.Curve(curve) for curve in contours]
-        data = [curve for curve in data if curve.area > AREA_THRESHOLD]
+        #matted = cv.CreateMat(image.width, image.height, cv.CV_8UC1)
+        #cv.Convert(image, matted)
+        #image = self.broaden(image)
+        image = pad(image)
+        #contours = self.contours(image)
+        #storage = cv.CreateMemStorage()
+        #contours = [list(cv.FindContours(image, storage, method=cv.CV_CHAIN_APPROX_NONE))]
+        contours = cv.FindContours(image, cv.CreateMemStorage(), 
+                mode=cv.CV_RETR_TREE, method=cv.CV_CHAIN_APPROX_SIMPLE)
+        contours = contourSign(allContours(contours), positiveNegativeMap(image))
+        data = [FourierComparison.Curve(curve) 
+                for curve in contours if abs(curve[1]) > AREA_THRESHOLD]
+        #data = [curve for curve in data if abs(curve.area) > AREA_THRESHOLD]
         curveKinds = partition(data, lambda curve: curve.area > 0)
         displacement = minusTuples(self.averageCentroid(curveKinds[0]), self.averageCentroid(curveKinds[1]))
         curveAggregate = []
@@ -272,3 +290,36 @@ class FourierComparison(FeatureExtractor):
             curveAggregate.append(curves)
         return FourierDescriptor(displacement, curveAggregate, (image.width, image.height))
 
+def allContours(contour, d=0, side=0):
+    """Takes the output of cv.FindContours and turns it into a Python
+    list with the same order as opencv's TreeNodeIterator in the C API."""
+    contours = []
+    if contour:
+        #print d, side, contour, cv.ContourArea(contour)
+        contours.append([contour, cv.ContourArea(contour)])
+        contours.extend(allContours(contour.v_next(),d+1, 1))
+        contours.extend(allContours(contour.h_next(),d+1,-1))
+    return contours
+
+def positiveNegativeMap(image):
+    #write image to stringio using pil
+    image = Image.fromstring("L", cv.GetSize(image), image.tostring())
+    #can't load into C from stdin! :(
+    #fd = cStringIO.StringIO()
+    fd = tempfile.NamedTemporaryFile()
+    image.save(fd, 'png')
+
+    #call subprocess on file
+    pn = subprocess.Popen(['./ocr/extract/pncurve',fd.name],stdout=subprocess.PIPE)
+    pn.wait()
+    return [int(i) for i in pn.stdout.read().split(',')[:-1]]
+
+def contourSign(contours, pn):
+    for i,j in zip(contours, pn): i.append(j)
+    return [(contour, area*-1*(-1*sign)) for contour, area, sign in contours]
+
+def pad(image):
+    """Return a copy of an image with a 20px border"""
+    new = cv.CreateImage((image.width+40, image.height+40), image.depth, image.channels)
+    cv.CopyMakeBorder(image, new, (20,20), cv.BORDER_CONSTANT, cv.CV_RGB(255,255,255))
+    return new

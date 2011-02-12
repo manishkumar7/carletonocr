@@ -1,5 +1,6 @@
 import cv
 import os
+from nltk.corpus import brown
 import binarize, extract, linguistics, match, typeset, segment
 import copy
 
@@ -8,8 +9,10 @@ class OCRRunner:
         self.options = None
 
     def varChanged(self, attr, other):
-        return self.options is None or getattr(self.options, attr) != getattr(other, attr) \
-            or True in (self.varChanged(at, other) for at in other.potential(attr))
+        return self.options is None or getattr(self.options, attr) != getattr(other, attr)
+
+    def dependentVarChanged(self, attr, other):
+        return True in (self.varChanged(at, other) for at in other.potential(attr))
 
     def toNonString(self, fn, lst):
         def do(piece):
@@ -24,10 +27,10 @@ class OCRRunner:
         if targetChanged:
             options.showStatus("Loading image")
             self.image = cv.LoadImage(options.target, cv.CV_LOAD_IMAGE_COLOR)
-        binarizerChanged = self.varChanged('binarizer', options)
+        binarizerChanged = self.varChanged('binarizer', options) or self.dependentVarChanged('binarizer', options)
         if binarizerChanged:
             options.showStatus("Initializing binarizer")
-            self.binarizer = options.get('binarizer')
+            self.binarizer = options.get('binarizer')(**options.potential('binarizer'))
         redoBinarizeImage = targetChanged or binarizerChanged
         if redoBinarizeImage:
             options.showStatus("Binarizing image")
@@ -37,7 +40,7 @@ class OCRRunner:
         segmenterChanged = self.varChanged('segmenter', options)
         if segmenterChanged:
             options.showStatus("Initializing segmenter")
-            self.segmenter = options.get('segmenter')
+            self.segmenter = options.get('segmenter')()
         redoSegmentedImage = segmenterChanged or redoBinarizeImage
         if redoSegmentedImage:
             options.showStatus("Segmenting image")
@@ -45,10 +48,10 @@ class OCRRunner:
             if options.saveSegmented != None:
                 segVisual = self.segmenter.showSegments(self.blackAndWhite, self.characterPieces)
                 cv.SaveImage(options.saveSegmented, segVisual)
-        typesetterChanged = self.varChanged('typesetter', options)
+        typesetterChanged = self.varChanged('typesetter', options) or self.dependentVarChanged('typesetter', options)
         if typesetterChanged:
             options.showStatus("Initializing typesetter")
-            self.typesetter = options.get('typesetter')
+            self.typesetter = options.get('typesetter')(**options.potential('typesetter'))
         redoTypeset = typesetterChanged or redoSegmentedImage
         if redoTypeset:
             options.showStatus("Typesetting image")
@@ -59,7 +62,7 @@ class OCRRunner:
         scalerChanged = self.varChanged('scaler', options) or self.varChanged('dimension', options)
         if scalerChanged:
             options.showStatus("Initializing scaler")
-            self.scaler = options.get('scaler', options.dimension)
+            self.scaler = options.get('scaler')(options.dimension)
         redoScale = scalerChanged or redoTypeset
         if redoScale:
             options.showStatus("Scaling image")
@@ -67,10 +70,10 @@ class OCRRunner:
             def scaleAndRebinarize(image):
                 return bin.binarize(self.scaler.scale(image))
             self.scaled = self.toNonString(scaleAndRebinarize, self.pieces)
-        featureExtractorChanged = self.varChanged('featureExtractor', options)
+        featureExtractorChanged = self.varChanged('featureExtractor', options) or self.dependentVarChanged('featureExtractor', options)
         if featureExtractorChanged:
             options.showStatus("Initializing feature extractor")
-            self.featureExtractor = options.get('featureExtractor')
+            self.featureExtractor = options.get('featureExtractor')(**options.potential('featureExtractor'))
         redoFeatureExtractor = featureExtractorChanged or redoScale
         if redoFeatureExtractor:
             options.showStatus("Extracting features from image")
@@ -108,10 +111,10 @@ class OCRRunner:
             if options.saveMatcher != None:
                 matcherVisual = self.matcher.visualize(self.features, best)
                 cv.SaveImage(options.saveMatcher, matcherVisual)
-        linguistChanged = self.varChanged('linguist', options) or self.varChanged('selfImportance', options)
+        linguistChanged = self.varChanged('linguist', options)
         if linguistChanged:
             options.showStatus("Initializing linguist")
-            self.linguist = options.get('linguist', options.selfImportance)
+            self.linguist = options.get('linguist')()
         if linguistChanged or redoPossibilities:
             options.showStatus("Applying linguistic correction")
             self.output = self.linguist.correct(self.voteDict)
@@ -134,9 +137,8 @@ classMap = {
      },
     'scaler': {'proportional': extract.ProportionalScaler, 'simple': extract.Scaler},
     'linguist': {
-        'null': linguistics.NullLinguist,
-        'n-gram': linguistics.NGramLinguist,
-        'spelling': linguistics.SpellingLinguist
+        'null': linguistics.Linguist,
+        'n-gram': lambda: linguistics.NGramLinguist(''.join(brown.words()[:1000]), 3, .3)
     }
 }
 
@@ -144,11 +146,11 @@ class Options:
     def potential(self, parent):
         opts = {}
         for opt in dependentOptions:
-            if opt.parent == parent and getattr(self, parent) in opt.parentValues:
+            if opt.parent == parent and opt.parentValue == getattr(self, parent):
                 opts[opt.attrName()] = getattr(self, opt.attrName(), opt.default)
         return opts
-    def get(self, attr, *args):
-        return classMap[attr][getattr(self, attr)](*args, **self.potential(attr))
+    def get(self, attr):
+        return classMap[attr][getattr(self, attr)]
 
 defaultOptions = Options()
 defaultOptions.spaceWidth = .4
@@ -160,7 +162,6 @@ defaultOptions.typesetter = 'linear'
 defaultOptions.featureExtractor = 'template'
 defaultOptions.scaler = 'proportional'
 defaultOptions.linguist = 'null'
-defaultOptions.selfImportance = .3
 defaultOptions.saveBinarized = None
 defaultOptions.saveSegmented = None
 defaultOptions.saveTypeset = None
@@ -169,11 +170,11 @@ defaultOptions.saveMatcher = None
 defaultOptions.showStatus = lambda status: None
 
 class DependentOption:
-    def __init__(self, name, type, parent, parentValues, default, help=None):
+    def __init__(self, name, type, parent, parentValue, default, help=None):
         self.name = name
         self.type = type
         self.parent = parent
-        self.parentValues = parentValues
+        self.parentValue = parentValue
         self.default = default
         self.help = help or self.guiName()
     def cliName(self):
@@ -185,16 +186,14 @@ class DependentOption:
         return pieces[0]+''.join(name[0].upper()+name[1:] for name in pieces[1:])
 
 dependentOptions = [
-    DependentOption('lookback', int, 'typesetter', ['linear'], 0),
-    DependentOption('space width', float, 'typesetter', ['linear'], 0.4, "What proportion of the average character width is the width of a space"),
-    DependentOption('background white limit', float, 'binarizer', ['adaptive'], .9),
-    DependentOption('proportion', float, 'binarizer', ['adaptive'], .5),
-    DependentOption('fourier points', int, 'featureExtractor', ['fourier-descriptor'], 8),
-    DependentOption('centroid tolerance', float, 'featureExtractor', ['fourier-descriptor'], .1),
-    DependentOption('area threshold', float, 'featureExtractor', ['fourier-descriptor'], 4),
-    DependentOption('filter fraction', float, 'featureExtractor', ['fourier-descriptor'], .5),
-    DependentOption('letters in ngram', float, 'linguist', ['n-gram', 'spelling'], 3),
-    DependentOption('edit distance', int, 'linguist', ['spelling'], 3)
+    DependentOption('lookback', int, 'typesetter', 'linear', 0),
+    DependentOption('space width', float, 'typesetter', 'linear', 0.4, "What proportion of the average character width is the width of a space"),
+    DependentOption('background white limit', float, 'binarizer', 'adaptive', .9),
+    DependentOption('proportion', float, 'binarizer', 'adaptive', .5),
+    #DependentOption('fourierPoints', int, 'featureExtractor', 'fourier-descriptor', 8),
+    #DependentOption('centroidTolerance', float, 'featureExtractor', 'fourier-descriptor', .1),
+    #DependentOption('areaThreshold', float, 'featureExtractor', 'fourier-descriptor', 4),
+    #DependentOption('filterFraction', float, 'featureExtractor', 'fourier-descriptor', .5)
 ]
 
 for option in dependentOptions:
