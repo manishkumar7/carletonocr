@@ -23,7 +23,7 @@ class SimpleResult(object):
     def result(self):
         return ''.join(self.string)
     def inputString(self):
-        return ''.join(map(lambda c: c if isinstance(c, str) else c[0][0], self.characterPossibilities))
+        return NullLinguist(0.0).correct(self.characterPossibilities).result()
     def visualize(self):
         return 'Before correction: %s\nAfter correction: %s' % (self.inputString(), self.result())
 
