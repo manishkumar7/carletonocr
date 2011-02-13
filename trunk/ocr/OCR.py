@@ -79,9 +79,9 @@ class OCRRunner(object):
                 featuresVisual = extract.visualizeFeatures(self.scaled, self.features)
                 cv.SaveImage(options.saveFeatures, featuresVisual)
         libraryChanged = not hasattr(self, 'rawLibrary')
-        if libraryChanged:
+        if libraryChanged or self.varChanged('library', options):
             options.showStatus("Generating image files for library")
-            self.rawLibrary = extract.buildLibrary()
+            self.rawLibrary = extract.buildLibrary(options.library)
         redoLibraryScale = libraryChanged or scalerChanged
         if redoLibraryScale:
             options.showStatus("Scaling library")
@@ -117,7 +117,7 @@ class OCRRunner(object):
             linguistOutput = self.linguist.correct(self.voteDict)
             self.output = linguistOutput.result()
             if options.saveLinguist != None:
-                cv.SaveImage(options.saveLinguist, extract.render("Arial", linguistOutput.visualize()))
+                cv.SaveImage(options.saveLinguist, extract.render("Arial", linguistOutput.visualize(), options.library))
         self.options = copy.copy(options)
         options.showStatus("Complete")
         return self.output
@@ -162,7 +162,7 @@ defaultOptions.segmenter = 'connected-component'
 defaultOptions.typesetter = 'linear'
 defaultOptions.featureExtractor = 'template'
 defaultOptions.scaler = 'proportional'
-defaultOptions.linguist = 'null'
+defaultOptions.linguist = 'n-gram'
 defaultOptions.selfImportance = .3
 defaultOptions.saveBinarized = None
 defaultOptions.saveSegmented = None
@@ -171,6 +171,7 @@ defaultOptions.saveFeatures = None
 defaultOptions.saveMatcher = None
 defaultOptions.saveLinguist = None
 defaultOptions.showStatus = lambda status: None
+defaultOptions.library = "/Library/Fonts/"
 
 class DependentOption:
     def __init__(self, name, type, parent, parentValues, default, help=None):

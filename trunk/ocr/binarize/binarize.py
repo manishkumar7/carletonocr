@@ -44,8 +44,7 @@ class SimpleBinarizer(Binarizer):
         return blockSize
 
 class LocalBinarizer(Binarizer):
-    def __init__(self, backgroundWhiteLimit, proportion):
-        self.backgroundWhiteLimit = backgroundWhiteLimit #This isn't used anywhere
+    def __init__(self, proportion):
         self.proportion = proportion
 
     def binarize(self, im):

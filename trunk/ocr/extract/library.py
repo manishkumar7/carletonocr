@@ -17,8 +17,8 @@ def trim(im, border):
         # found no content
         raise ValueError("cannot trim; image was empty")
 
-def render(font, char):
-    font = ImageFont.truetype('/Library/Fonts/'+font+'.ttf', pointSize)
+def render(font, char, path):
+    font = ImageFont.truetype(path+font+'.ttf', pointSize)
     im = Image.new("L", (20, 20), 255)
     draw = ImageDraw.Draw(im)
     width, height = draw.textsize(char, font=font)
@@ -34,9 +34,9 @@ def render(font, char):
     cv.SetData(cv_im, im.tostring())
     return cv_im
 
-def buildLibrary():
+def buildLibrary(path):
     chars = []
     for font in fonts:
         for char in charsToGenerate:
-            chars.append((char, render(font, char)))
+            chars.append((char, render(font, char, path)))
     return chars

@@ -48,9 +48,9 @@ class ImagePanel:
         if sem != None:
             sem.release()
 
-    def setText(self, text):
+    def setText(self, text, library):
         filename = name()
-        cv_im = ocr.extract.render("Arial", text)
+        cv_im = ocr.extract.render("Arial", text, library)
         cv.SaveImage(filename, cv_im)
         self.reload(filename)
 
@@ -172,7 +172,7 @@ class OCRWindow(object):
             panel = wx.Panel(parent=notebook)
             imagePanel = ImagePanel(panel)
             setattr(self, attr, imagePanel)
-            imagePanel.setText("No image loaded for %s" % attr)
+            imagePanel.setText("No image loaded for %s" % attr, self.options.library)
             notebook.AddPage(panel, name)
         def redraw(*args):
             self.redrawPictures()
@@ -275,7 +275,7 @@ class OCRWindow(object):
         self.flapWings = False
         self.hasBeenRun = True
         self.reloadPictures()
-        self.output.setText(text)
+        self.output.setText(text, self.options.library)
         self.redrawPictures()
 
     def doFlapWings(self):

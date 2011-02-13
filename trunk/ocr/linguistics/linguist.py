@@ -80,7 +80,6 @@ class NGramLinguist(StreamLinguist):
         while not connected:
             connected = True
             self.port = random.randint(5000,10000)
-            print "trying port", self.port
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 s.bind(('localhost', self.port))
@@ -88,7 +87,6 @@ class NGramLinguist(StreamLinguist):
                 if e[0] == 13:
                     connected = False
                 else:
-                    print "Unexpected socket stuff"
                     sys.exit(1)
             s.close()
         self.server = os.spawnv(os.P_NOWAIT, 'ngram', ['ngram', '-server-port', str(self.port), '-lm', 'language-model.txt'])
