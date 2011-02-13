@@ -95,7 +95,8 @@ class FourierDescriptor(Features):
                              # or anything else.
 
     def visualize(self):
-        vis = cv.CreateImage((50, 50), 8, 3)
+        vis = cv.CreateImage((10,10), 8, 3)
+        cv.Rectangle(vis, (0,0), (self.dimension[0],self.dimension[1]), (255,255,255), cv.CV_FILLED)
         return vis
         # I don't know if this code should work at all, so we're not running it for now
         x = 0
