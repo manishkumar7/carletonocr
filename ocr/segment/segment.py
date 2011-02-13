@@ -1,4 +1,5 @@
 import cv
+import math
 
 class Segmenter:
     #Future subclasses:
@@ -28,40 +29,41 @@ class ConnectedComponentSegmenter(Segmenter):
     
     def segment(self, blackAndWhite):
         pixels = set((row,col) for row in range(blackAndWhite.height) for col in range(blackAndWhite.width))
-        output = []
+        output, average = [], 0.0
         while pixels:
             pixel = pixels.pop()
             if blackAndWhite[pixel] == 0:
                  component = self.findConnectedComponents(blackAndWhite, pixel, pixels)
                  if component != None:
                     output.append(component)
-        return output
+                    average += component[1]
+        average = average/len(output)
+        standardDev = math.sqrt(float(len(output))**-1 * sum([pow(component[1] - average, 2) for component in output]))
+        print average, standardDev
+        return [component[0] for component in output if component[1] > standardDev/average * self.areaThreshold]
     
     def findConnectedComponents(self, image, pixel, pixels):
         points = set([pixel])
         pointsToSearch = [pixel]
         while pointsToSearch:
             workListPoint = pointsToSearch.pop()
-            #print "Searching for points adjacent to %d, %d!" % workListPoint
             wLRow, wLCol = workListPoint
             potentialAdjacentPoints = set([(wLRow, wLCol-1), (wLRow, wLCol+1), (wLRow-1, wLCol), (wLRow+1, wLCol)]) - points
             adjacentPoints = set()
             for p in potentialAdjacentPoints:
-                #print p
                 tmpRow, tmpCol = p
                 if tmpRow >= 0 and tmpCol >= 0 and tmpCol < image.width and tmpRow < image.height and image[p] == 0.0:
-                    #print "Including an adjacent point!"
                     adjacentPoints.add(p)
             points |= adjacentPoints
             pointsToSearch.extend(list(adjacentPoints))
-        if len(points) < self.areaThreshold:
-            return None
+        #if len(points) < self.areaThreshold:
+        #    return None
         for point in points:
             if point in pixels:
                 pixels.remove(point)
         boundingBox = self.boundingBox(points)
         newImage = self.createImage(boundingBox, points)
-        return (boundingBox, newImage)
+        return ((boundingBox, newImage), len(points))
     
     def boundingBox(self, points):
         minRow, minCol, maxRow, maxCol = 99999999999,99999999999,0,0

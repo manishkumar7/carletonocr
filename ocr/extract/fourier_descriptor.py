@@ -195,7 +195,7 @@ class FourierComparison(FeatureExtractor):
     def extract(self, image):
         image = pad(image)
         contours = allContours(cv.FindContours(image, cv.CreateMemStorage(), mode=cv.CV_RETR_TREE, method=cv.CV_CHAIN_APPROX_SIMPLE))
-        data = [FourierComparison.Curve(curve) for curve in contours]
+        data = [FourierComparison.Curve(curve) for curve in contours[1:]]
         curveKinds = partition(data, lambda curve: curve.area > 0)
         displacement = minusTuples(self.averageCentroid(curveKinds[0]), self.averageCentroid(curveKinds[1]))
         curveAggregate = []
