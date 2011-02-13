@@ -59,7 +59,7 @@ class StreamLinguist(Linguist):
         return SimpleResult(output, characterPossibilities)
 
     def probability(self, oldProb, newProb):
-        return negativeLog(oldProb)*(1-self.selfImportance) + negativeLog(newProb)*self.selfImportance 
+        return negativeLog(oldProb)*(1-self.selfImportance) + newProb*self.selfImportance 
 
 class NullLinguist(StreamLinguist):
 
@@ -72,10 +72,8 @@ class NullLinguist(StreamLinguist):
     def modelProbability(self, character, context):
         return 1
 
-class NGramLinguist(StreamLinguist):
-    def __init__(self, selfImportance, lettersInNgram):
-        StreamLinguist.__init__(self, selfImportance)
-        self.n = lettersInNgram
+class NGramProgram(object):
+    def __init__(self):
         connected = False
         while not connected:
             connected = True
@@ -98,6 +96,24 @@ class NGramLinguist(StreamLinguist):
         os.kill(self.server, signal.SIGINT)
         self.socket.close()
 
+    def probability(self, query):
+        self.socket.send(query+"\r\n")
+        while True:
+            message = self.socket.recv(4096).strip('\r\n \t\0')
+            for line in message.split():
+                if line == '-inf':
+                    return 10000
+                try:
+                    return -float(line)
+                except ValueError:
+                    pass
+
+class NGramLinguist(StreamLinguist):
+    def __init__(self, selfImportance, lettersInNgram):
+        StreamLinguist.__init__(self, selfImportance)
+        self.n = lettersInNgram
+        self.ngramProgram = NGramProgram()
+
     def makeContext(self):
         return []
     
@@ -107,41 +123,14 @@ class NGramLinguist(StreamLinguist):
             context.pop(0)
     
     def modelProbability(self, character, context):
-        query = ' '.join(context+[character])+"\r\n"
-        self.socket.send(query)
-        while True:
-            message = self.socket.recv(4096).strip('\r\n \t\0')
-            for line in message.split():
-                if line == '-inf':
-                    return 0
-                try:
-                    return 2**float(line)
-                except ValueError:
-                    pass
+        return self.ngramProgram.probability(' '.join(context+[character]))
 
-class SpellingLinguist(Linguist):
-
-    def __init__(self, selfImportance, lettersInNgram, editDistance):
-        Linguist.__init__(self, selfImportance)
-        dictionary = {}
-        words = brown.words()
-        for word in words:
-            dictionary[word] = dictionary.get(word, 0) + 1
-        self.dictionary = dictionary
-        self.count = len(words)
-        self.editDistance = editDistance
-        self.n = lettersInNgram
-
-    def backup(self):
-        if not hasattr(self, 'ngram'):
-            self.ngram = NGramLinguist(self.selfImportance, self.n)
-        return self.ngram
+class WordLinguist(Linguist):
 
     def correct(self, characterPossibilities):
         output = []
         word = []
         for character in characterPossibilities:
-            #print character
             if isinstance(character, str):
                 output.extend(self.correctWord(word))
                 word = []
@@ -160,11 +149,10 @@ class SpellingLinguist(Linguist):
         def extract(candidate):
             letters, probabilities = zip(*[characterPossibilities[i][c] for (i, c) in counted(candidate)])
             string = ''.join(letters)
-            if string in self.dictionary:
+            wordProbability = self.probability(string)
+            if wordProbability is not None:
                 charactersProbability = sum(map(negativeLog, probabilities)) / len(string)
-                wordProbability = negativeLog(self.dictionary[string]/float(self.count))
                 probability = self.selfImportance*wordProbability + (1 - self.selfImportance)*charactersProbability
-                #print string, charactersProbability, wordProbability, probability
                 candidates.append((string, probability))
 
         candidate = (0,)*len(characterPossibilities)
@@ -187,6 +175,44 @@ class SpellingLinguist(Linguist):
             theseCandidates = nextCandidates
 
         if candidates:
-            return [max(candidates, key=lambda c: c[1])[0]]
+            return [min(candidates, key=lambda c: c[1])[0]]
         else:
             return self.backup().correct(characterPossibilities).result()
+
+class SpellingLinguist(WordLinguist):
+
+    def __init__(self, selfImportance, lettersInNgram, editDistance):
+        WordLinguist.__init__(self, selfImportance)
+        dictionary = {}
+        words = brown.words()
+        for word in words:
+            dictionary[word] = dictionary.get(word, 0) + 1
+        self.dictionary = dictionary
+        self.count = len(words)
+        self.editDistance = editDistance
+        self.n = lettersInNgram
+
+    def backup(self):
+        if not hasattr(self, 'ngram'):
+            self.ngram = NGramLinguist(self.selfImportance, self.n)
+        return self.ngram
+
+    def probability(self, string):
+        if string in self.dictionary:
+            return negativeLog(self.dictionary[string]/float(self.count))
+        else:
+            return None
+
+class WholeWordNGramLinguist(WordLinguist):
+
+    def __init__(self, selfImportance, editDistance):
+        WordLinguist.__init__(self, selfImportance)
+        self.editDistance = editDistance
+        self.ngramProgram = NGramProgram()
+
+    def backup(self):
+        raise Exception("This should never happen")
+
+    def probability(self, string):
+        query = ' '.join(string)
+        return self.ngramProgram.probability(query)
