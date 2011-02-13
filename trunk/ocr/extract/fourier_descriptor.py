@@ -8,23 +8,18 @@ import subprocess
 import tempfile
 import Image
 
-FOURIER_POINTS = 16 
-TOLERANCE = .1
-AREA_THRESHOLD = 4
 CENTROID_THRESHOLD = 0
-FILTER_LENGTH = FOURIER_POINTS/2
 
 class FourierDescriptor(Features):
     class Curve(object):
         def __init__(self, ordinal, offset, points, fourierPoints, filterLength):
             self.ordinal = ordinal
             self.offset = offset
-            #print "I am a curve and my offset is", offset, "and my ordinal is", ordinal
-            self.points = points
             self.fourierPoints = fourierPoints
             self.filterLength = filterLength
             self.fourierX = self.fourier(points, 0)
             self.fourierY = self.fourier(points, 1)
+            self.numPoints = len(points)
 
         def fourier(self, points, coordinate):
             # T-shift isn't implemented because I don't understand the actual math
@@ -42,6 +37,9 @@ class FourierDescriptor(Features):
             interpolated = [interpolate(i) for i in range(self.fourierPoints)]
             return numpy.fft.fft(interpolated)[:self.filterLength]
 
+        def pad(self, lst):
+            return list(lst) + [0]*(self.numPoints - len(lst))
+
     def __init__(self, difference, curves, dimension, tolerance):
         '''
         Centroids should be a list of coordinate pairs
@@ -52,7 +50,7 @@ class FourierDescriptor(Features):
         self.curves = curves
         self.dimension = dimension
         self.tolerance = tolerance
-        
+
     def comparable(self, other):
         for myKind, yourKind in zip(self.curves, other.curves):
             if [curve.ordinal for curve in myKind] != [curve.ordinal for curve in yourKind]:
@@ -98,47 +96,23 @@ class FourierDescriptor(Features):
                              # or anything else.
 
     def visualize(self):
-        vis = cv.CreateImage((10,10), 8, 3)
-        cv.Rectangle(vis, (0,0), (self.dimension[0],self.dimension[1]), (255,255,255), cv.CV_FILLED)
-        return vis
-        # I don't know if this code should work at all, so we're not running it for now
         x = 0
         y = 0
-        allCurves = []
-        print self.curves
-        for pn in self.curves:
-            for curve in pn:
-                invX = numpy.fft.ifft(curve.fourierX) - curve.offset[0]
-                invY = numpy.fft.ifft(curve.fourierY) - curve.offset[1]
-                #new = numpy.zeros((int(invX.max())+1, int(invY.max())+1), int)
-                if invX.max()+1>x: x = invX.max()+1
-                if invY.max()+1>y: y = invY.max()+1
-                allCurves.append(numpy.column_stack((invX, invY)))
-        positive, negative = self.curves
-        new = numpy.zeros((int(x)+10, int(y)+10), int)
-        for curve in allCurves:
-            for pt in curve:
-                for i in xrange(4):
-                    for j in xrange(4):
-                        new[int(pt[0])-i][int(pt[1])-j] = 255 
-                        #try: new[int(pt[0])-i][int(pt[1])-j] = 255 
-                        #except IndexError: pass
-        new = new^255
-        # It should not take this many steps to do this OpenCV >:(
-        vis = cv.fromarray(new)
-        scaled = cv.fromarray(numpy.zeros(self.dimension, int)) 
-        depthed = cv.CreateImage(self.dimension, 8, 1)
-        rgb = whiteImage(self.dimension)
-        cv.Resize(vis, scaled, interpolation=cv.CV_INTER_NN)
-        cv.ConvertScale(scaled, depthed)
-        cv.MixChannels([depthed], [rgb], [(0,0),(0,1),(0,2)] )
-        for positiveCurve in positive:
-            ordinal = tuple(map(int, positiveCurve.offset))
-            cv.Circle(rgb, ordinal, 5, (0, 0, 255), -1)
-        for negativeCurve in negative:
-            ordinal = tuple(map(int, negativeCurve.offset))
-            cv.Circle(rgb, ordinal, 5, (0, 255, 0), -1)
-        return rgb 
+        vis = whiteImage(self.dimension)
+        print 'visualizing a letter'
+        for curveType, color in zip(self.curves, [(0, 0, 255), (0, 255, 0)]):
+            print 'new centroid type'
+            for curve in curveType:
+                centroid = tuple(map(operator.add, self.difference, curve.offset))
+                print 'we have a centroid at', centroid
+                cv.Circle(vis, centroid, 3, color, 1)
+                invX = numpy.fft.ifft(curve.pad(curve.fourierX)) - centroid[0]
+                invY = numpy.fft.ifft(curve.pad(curve.fourierY)) - centroid[1]
+                for coord in zip(invX, invY):
+                    coord = tuple(int(abs(x)) for x in coord)
+                    print 'it has a point at', coord
+                    vis[coord] = map(lambda x: x/2, color)
+        return vis 
 
 def partition(list, predicate):
     yes, no = [], []
@@ -155,7 +129,7 @@ def averagePoint(data):
     for point in data:
         sumX += point[0]
         sumY += point[1]
-    return (sumX/len(data), sumY/len(data))
+    return (int(sumX/len(data)), int(sumY/len(data)))
 
 def minusTuples(tup1, tup2):
     return tuple(map(operator.sub, tup1, tup2))
@@ -218,6 +192,6 @@ def allContours(contour, sign = -1):
 def pad(image):
     """Return a copy of an image with a 2px border"""
     new = cv.CreateImage((image.width+4, image.height+4), image.depth, image.channels)
-    cv.CopyMakeBorder(image, new, (2,2), cv.BORDER_CONSTANT, cv.CV_RGB(255,255,255))
+    cv.CopyMakeBorder(image, new, (2,2), 0, cv.CV_RGB(255,255,255))
     return new
 
