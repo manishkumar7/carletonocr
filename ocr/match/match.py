@@ -36,7 +36,7 @@ class knnMatcher(object):
             if not isinstance(chFeature, str)]
         charWidth = visualizations[0][0].width
         charHeight = visualizations[0][0].height
-        border = charWidth/8
+        border = charWidth/2
         mostMatches = max(len(vis[1]) for vis in visualizations)
         width = (charWidth+border) * (mostMatches+1)
         height = len(visualizations) * (charHeight+border) + border
@@ -57,7 +57,7 @@ class knnMatcher(object):
                 x += charWidth + border
             if i != len(visualizations)-1:
                 lineRow = y + charHeight + border/2
-                cv.Line(matchVis, (0, lineRow), (width, lineRow), (0,0,0), 3)
+                cv.Line(matchVis, (0, lineRow), (width, lineRow), (0,255,0), 2)
         lineCol = charWidth + 3*border/2
-        cv.Line(matchVis, (lineCol, 0), (lineCol, height), (0,0,0), 3)
+        cv.Line(matchVis, (lineCol, 0), (lineCol, height), (0,255,0), 3)
         return matchVis
