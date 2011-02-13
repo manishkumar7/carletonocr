@@ -99,18 +99,18 @@ class FourierDescriptor(Features):
         x = 0
         y = 0
         vis = whiteImage(self.dimension)
-        print 'visualizing a letter'
+        #print 'visualizing a letter'
         for curveType, color in zip(self.curves, [(0, 0, 255), (0, 255, 0)]):
-            print 'new centroid type'
+            #print 'new centroid type'
             for curve in curveType:
                 centroid = tuple(map(operator.add, self.difference, curve.offset))
-                print 'we have a centroid at', centroid
+                #print 'we have a centroid at', centroid
                 cv.Circle(vis, centroid, 3, color, 1)
                 invX = numpy.fft.ifft(curve.pad(curve.fourierX)) - centroid[0]
                 invY = numpy.fft.ifft(curve.pad(curve.fourierY)) - centroid[1]
                 for coord in zip(invX, invY):
                     coord = tuple(int(abs(x)) for x in coord)
-                    print 'it has a point at', coord
+                    #print 'it has a point at', coord
                     vis[coord] = map(lambda x: x/2, color)
         return vis 
 

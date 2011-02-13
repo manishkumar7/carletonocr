@@ -1,40 +1,35 @@
 import cv
 from feature_extractor import *
+import numpy
 
 class TemplateImage(Features):
+
     def __init__(self, image):
         self.image = image
+        self.array = numpy.zeros((image.width, image.height), dtype=bool)
+        for row in range(self.image.height):
+            for col in range(self.image.width):
+                value = image[row, col]
+                if value == 255:
+                    self.array[row, col] = True
+                elif value == 0:
+                    self.array[row, col] = False
+                else:
+                    raise Exception("This can't happen!")
+        self.notarray = numpy.invert(self.array)
+
     def similarity(self, other):
         '''Determines the distance between shared pixels of self.image and other.image '''
-        inputIm = self.image
-        templateIm = other.image
-        dist = 0
-        assert inputIm.width == templateIm.width and inputIm.height == templateIm.height
-        n11 = .01
-        n00 = .01
-        n10 = .01
-        n01 = .01
-        for row in range(inputIm.height):
-            for col in range(inputIm.width):
-                input = inputIm[row, col]
-                template = templateIm[row, col]
-                if input == 255:
-                    if template == 255:
-                        n11 += 1
-                    elif template == 0:
-                        n10 += 1
-                    else:
-                        raise Exception("Why is there a pixel with value " + str(pair[0]))
-                elif input == 0:
-                    if template == 255:
-                        n01 += 1
-                    elif template == 0:
-                        n00 += 1
-                    else:
-                        raise Exception("Why is there a pixel with value " + str(pair[0]))
-                else:
-                    raise Exception("Why is there a pixel with value " + str(pair[0]))
-        return self.formula(n00, n01, n10, n11)
+        assert self.image.width == other.image.width and self.image.height == other.image.height
+        def maybe(features, num):
+             if num == 0:
+                 return features.notarray
+             else:
+                 return features.array
+        def count(a, b):
+             return numpy.sum(numpy.bitwise_and(maybe(self, a), maybe(other, b)))
+        return self.formula(count(0, 0), count(0, 1), count(1, 0), count(1, 1))
+
     def visualize(self):
         vis = cv.CreateImage((self.image.width, self.image.height), 8, 3)
         cv.CvtColor(self.image, vis, cv.CV_GRAY2RGB)
