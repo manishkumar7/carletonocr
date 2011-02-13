@@ -17,12 +17,15 @@ def negativeLog(n):
         return -math.log(n)
 
 class SimpleResult(object):
-    def __init__(self, string):
+    def __init__(self, string, characterPossibilities):
         self.string = string
+        self.characterPossibilities = characterPossibilities
     def result(self):
-        return self.string
+        return ''.join(self.string)
+    def inputString(self):
+        return ''.join(map(lambda c: c if isinstance(c, str) else c[0][0], self.characterPossibilities))
     def visualize(self):
-        return 'I guess it\'s something like: '+self.string
+        return 'Before correction: %s\nAfter correction: %s' % (self.inputString(), self.result())
 
 class Linguist(object):
     def __init__(self, selfImportance):
@@ -36,23 +39,24 @@ class StreamLinguist(Linguist):
     def correct(self, characterPossibilities):
         '''Correct errors based on linguistic knowledge'''
         #print characterPossibilities
-        output = ''
-        context = self.makeContext()
-        for item in characterPossibilities:
+        output = []
+        context = [self.makeContext()]
+        def transform(item):
             if isinstance(item, str):
-                output += item
-                context = self.makeContext()
+                context[0] = self.makeContext()
+                return item
             else:
                 maxProbability = 10*INFINITY
                 bestLetter = ''
                 for character, probability in item:
-                    realProbability = self.probability(probability, self.modelProbability(character, context))
+                    realProbability = self.probability(probability, self.modelProbability(character, context[0]))
                     if realProbability < maxProbability:
                         bestLetter = character
                         maxProbability = realProbability
-                self.updateContext(context, bestLetter)
-                output += bestLetter
-        return SimpleResult(output)
+                self.updateContext(context[0], bestLetter)
+                return bestLetter
+        output = map(transform, characterPossibilities)
+        return SimpleResult(output, characterPossibilities)
 
     def probability(self, oldProb, newProb):
         return negativeLog(oldProb)*(1-self.selfImportance) + negativeLog(newProb)*self.selfImportance 
@@ -146,7 +150,7 @@ class SpellingLinguist(Linguist):
             else:
                 word.append(character)
         output.extend(self.correctWord(word))
-        return SimpleResult(''.join(output))
+        return SimpleResult(output, characterPossibilities)
 
     def correctWord(self, characterPossibilities):
         characterPossibilities = map(lambda lst: sorted(lst, key=lambda c: c[1], reverse=True), characterPossibilities)
