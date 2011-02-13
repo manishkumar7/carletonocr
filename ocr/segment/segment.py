@@ -6,10 +6,6 @@ class Segmenter:
     def segment(self, blackAndWhite):
         '''Given a black and white image, return a list of image
         pieces which each stand for an individual character'''
-        #Potential pain point in the future:
-        #Segmentation maybe should use knowledge about characters;
-        #What do we do with overlapping characters
-        #or characters that aren't contiguous
         return []
         
     def showSegments(self, blackAndWhite, characterPieces):
@@ -25,9 +21,10 @@ class Segmenter:
         	cv.Rectangle(segVisual, (box[0],box[1]), (box[0]+box[2],box[1]+box[3]), cv.RGB(0, 200, 0), 1, 8)        
         return segVisual
 
-AREA_THRESHOLD = 10
-
 class ConnectedComponentSegmenter(Segmenter):
+
+    def __init__(self, areaThreshold):
+        self.areaThreshold = areaThreshold
     
     def segment(self, blackAndWhite):
         pixels = set((row,col) for row in range(blackAndWhite.height) for col in range(blackAndWhite.width))
@@ -57,7 +54,7 @@ class ConnectedComponentSegmenter(Segmenter):
                     adjacentPoints.add(p)
             points |= adjacentPoints
             pointsToSearch.extend(list(adjacentPoints))
-        if len(points) < AREA_THRESHOLD:
+        if len(points) < self.areaThreshold:
             return None
         for point in points:
             if point in pixels:
