@@ -20,7 +20,7 @@ class knnMatcher(object):
             elif similarity > best[0][0]:
                 heapq.heappop(best)
                 heapq.heappush(best, (similarity, character, features))
-        return [(similarity/sum, character, features) for (similarity, character, features) in best]
+        return [(scf[0]/(sum*place), scf[1], scf[2]) for (scf, place) in zip(best, range(self.k))]
 
     def voteDict(self, best):
         voteDict = {}
