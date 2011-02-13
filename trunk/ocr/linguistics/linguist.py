@@ -39,7 +39,6 @@ class StreamLinguist(Linguist):
     def correct(self, characterPossibilities):
         '''Correct errors based on linguistic knowledge'''
         #print characterPossibilities
-        output = []
         context = [self.makeContext()]
         def transform(item):
             if isinstance(item, str):
@@ -71,13 +70,22 @@ class NullLinguist(StreamLinguist):
 
     def modelProbability(self, character, context):
         return 1
+        
+"""class NullLinguist(Linguist):
+    def correct(self, characterPossibilities):
+        def transform(item):
+            if isinstance(item, str):
+                return item
+            else:
+                return sorted(item, key=lambda x: x[1], reverse=True)[0][0]
+        return map(transform, characterPossibilities)"""
 
 class NGramProgram(object):
     def __init__(self):
         connected = False
         while not connected:
             connected = True
-            self.port = random.randint(5000,10000)
+            self.port = random.randint(5000,50000)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 s.bind(('localhost', self.port))
