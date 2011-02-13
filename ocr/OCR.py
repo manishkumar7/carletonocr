@@ -155,9 +155,9 @@ class Options:
 
 defaultOptions = Options()
 defaultOptions.spaceWidth = .4
-defaultOptions.dimension = 100
-defaultOptions.k = 1
-defaultOptions.binarizer = 'simple'
+defaultOptions.dimension = 50
+defaultOptions.k = 10
+defaultOptions.binarizer = 'adaptive'
 defaultOptions.segmenter = 'connected-component'
 defaultOptions.typesetter = 'linear'
 defaultOptions.featureExtractor = 'template'
@@ -191,14 +191,13 @@ class DependentOption:
 dependentOptions = [
     DependentOption('lookback', int, 'typesetter', ['linear'], 0),
     DependentOption('space width', float, 'typesetter', ['linear'], 0.4, "What proportion of the average character width is the width of a space"),
-    DependentOption('background white limit', float, 'binarizer', ['adaptive'], .9),
-    DependentOption('proportion', float, 'binarizer', ['adaptive'], .5),
+    DependentOption('proportion', float, 'binarizer', ['adaptive'], .3),
     DependentOption('fourier points', int, 'featureExtractor', ['fourier-descriptor'], 16),
     DependentOption('tolerance', float, 'featureExtractor', ['fourier-descriptor'], .1),
     DependentOption('area threshold', float, 'featureExtractor', ['fourier-descriptor'], 4),
     DependentOption('filter fraction', float, 'featureExtractor', ['fourier-descriptor'], .5),
     DependentOption('letters in ngram', float, 'linguist', ['n-gram', 'spelling'], 3),
-    DependentOption('edit distance', int, 'linguist', ['spelling'], 3)
+    DependentOption('edit distance', int, 'linguist', ['spelling'], 5)
 ]
 
 for option in dependentOptions:
