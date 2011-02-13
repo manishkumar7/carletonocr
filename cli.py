@@ -43,6 +43,7 @@ def getOptions():
     addOption('--save-typeset', 'saveTypeset', 'Set this to a path to save the typeset image to a particular location')
     addOption('--save-features', 'saveFeatures', 'Set this to a path to save the features image to a particular location')
     addOption('--save-matcher', 'saveMatcher', 'Set this to a path to save the matched image to a particular location')
+    addOption('--library', 'library', 'Set this to a path to load fonts from')
 
     parser.add_option('--verbose', action="store_true", dest='showStatus', help='Enable verbose output')
 
