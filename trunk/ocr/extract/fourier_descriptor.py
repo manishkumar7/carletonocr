@@ -4,6 +4,9 @@ from feature_extractor import *
 from scaler import ProportionalScaler
 import math
 import operator
+import subprocess
+import tempfile
+import Image
 
 FOURIER_POINTS = 16 
 TOLERANCE = .1
@@ -154,23 +157,8 @@ def averagePoint(data):
         sumY += point[1]
     return (sumX/len(data), sumY/len(data))
 
-def addTuples(A, B):
-    return tuple(map(operator.add, A, B))
-    
-def negTuple(tup):
-    return tuple(-t for t in tup)
-
 def minusTuples(tup1, tup2):
-    return addTuples(tup1, negTuple(tup2))
-
-#See http://en.wikipedia.org/wiki/Polygonal_area#Area_and_centroid
-#Assumes non-self-intersecting contours, which I think is safe
-def contourArea(points):
-    area = 0
-    for i in range(len(points)-1):
-        area += points[i][0]*points[i+1][1]-points[i+1][0]*points[i][1]
-    return .5 * area
-                        
+    return tuple(map(operator.sub, tup1, tup2))
 
 class FourierComparison(FeatureExtractor):
     def __init__(self, fourierPoints, tolerance, filterFraction):
@@ -179,11 +167,10 @@ class FourierComparison(FeatureExtractor):
         self.filterLength = int(filterFraction * fourierPoints)
 
     class Curve(object):
-        def __init__(self, points):
-            self.points = points
-            self.centroid = averagePoint(points)
-            self.area = contourArea(points)
-            #print "I am the other type of curve and my centroid is", self.centroid, "and my area is ", self.area
+        def __init__(self, contour):
+            self.points = contour[0]
+            self.centroid = averagePoint(contour[0])
+            self.area = contour[1]
 
     def averageCentroid(self, data):
         if data:
@@ -205,73 +192,9 @@ class FourierComparison(FeatureExtractor):
                 ordinalOffset += 1
         return output
 
-    def contours(self, image):
-        unvisited = set((row, col) for col in range(image.width+1) for row in range(image.height+1))
-        contours = []
-        while len(unvisited) > 0:
-            vertex = unvisited.pop()
-            direction = self.direction(image, vertex)
-            if direction != (0, 0):
-                contour = [vertex]
-                #print 'starting a new contour'
-                while len(unvisited) > 0 and addTuples(vertex, direction) in unvisited:
-                    vertex = addTuples(vertex, direction)
-                    #print 'adding', vertex
-                    contour.append(vertex)
-                    unvisited.remove(vertex)
-                    direction = self.direction(image, vertex)
-                    #print "The direction is", direction
-                #print contour
-                assert addTuples(contour[-1],direction) == contour[0]
-                contours.append(contour)
-        return contours
-
-    def direction(self, image, vertex):
-        #print 'finding the direction from', vertex
-        offsets = [(0, 0), (-1, 0), (-1, -1), (0, -1)]
-        direction = [(0, 1), (-1, 0), (0, -1), (1, 0)]
-        def lookup(i):
-            coordinate = addTuples(vertex, offsets[i % len(offsets)])
-            if coordinate[0] < 0 or coordinate[1] < 0 or coordinate[0] >= image.height or coordinate[1] >= image.width:
-                return 255
-            return image[coordinate]
-        for i in range(4):
-            v = addTuples(vertex, offsets[i])
-            #print 'at pixel', v, 'the pixel is', lookup(i)
-        candidates = [d for i, d in zip(range(len(offsets)), direction) if lookup(i) == 255 and lookup(i+1) == 0]
-        if len(candidates) == 0:
-            return (0, 0)
-        elif len(candidates) == 1:
-            return candidates[0]
-        else:
-            print 'dim', image.width, image.height
-            print 'vertex', vertex
-            print 'values', [(lookup(i), offsets[i]) for i in range(4)]
-            raise Exception("The image has not been correctly prepared")
-
-    def broaden(self, image):
-        #print 'broadening'
-        dst = cv.CreateImage((image.width, image.height), 8, 1)
-        cv.Copy(image, dst)
-        keepGoing = True
-        while keepGoing:
-           #print 'looping'
-           keepGoing = False
-           for row in range(image.height-1):
-               for col in range(image.width-1):
-                   for i in range(2):
-                       blackWhite = [0, 255]
-                       if dst[row, col] == blackWhite[i] == dst[row+1, col+1] and dst[row+1, col] == blackWhite[(i+1)%2] == dst[row, col+1]:
-                           #print 'blackening'
-                           dst[row, col] = 0
-                           dst[row+1, col] = 0
-                           keepGoing = True
-        #print 'broadened'
-        return dst
-
     def extract(self, image):
-        image = self.broaden(image)
-        contours = self.contours(image)
+        image = pad(image)
+        contours = allContours(cv.FindContours(image, cv.CreateMemStorage(), mode=cv.CV_RETR_TREE, method=cv.CV_CHAIN_APPROX_SIMPLE))
         data = [FourierComparison.Curve(curve) for curve in contours]
         curveKinds = partition(data, lambda curve: curve.area > 0)
         displacement = minusTuples(self.averageCentroid(curveKinds[0]), self.averageCentroid(curveKinds[1]))
@@ -281,4 +204,20 @@ class FourierComparison(FeatureExtractor):
             curves = [FourierDescriptor.Curve(ordinal, minusTuples(curve.centroid, displacement), curve.points, self.fourierPoints, self.filterLength) for (ordinal, curve) in ordinals]
             curveAggregate.append(curves)
         return FourierDescriptor(displacement, curveAggregate, (image.width, image.height), self.tolerance)
+
+def allContours(contour, sign = -1):
+    """Takes the output of cv.FindContours and turns it into a Python
+    list with the same order as opencv's TreeNodeIterator in the C API."""
+    contours = []
+    if contour:
+        contours.append((contour, sign*int(cv.ContourArea(contour))))
+        contours.extend(allContours(contour.v_next(), sign*-1))
+        contours.extend(allContours(contour.h_next(), sign))
+    return contours
+
+def pad(image):
+    """Return a copy of an image with a 2px border"""
+    new = cv.CreateImage((image.width+4, image.height+4), image.depth, image.channels)
+    cv.CopyMakeBorder(image, new, (2,2), cv.BORDER_CONSTANT, cv.CV_RGB(255,255,255))
+    return new
 
