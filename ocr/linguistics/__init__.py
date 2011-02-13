@@ -1,1 +1,1 @@
-from linguist import NullLinguist, NGramLinguist, SpellingLinguist
+from linguist import NullLinguist, NGramLinguist, SpellingLinguist, WholeWordNGramLinguist

@@ -139,6 +139,7 @@ classMap = {
     'linguist': {
         'null': linguistics.NullLinguist,
         'n-gram': linguistics.NGramLinguist,
+        'whole-word-n-gram': linguistics.WholeWordNGramLinguist,
         'spelling': linguistics.SpellingLinguist
     }
 }
@@ -198,7 +199,7 @@ dependentOptions = [
     DependentOption('tolerance', float, 'featureExtractor', ['fourier-descriptor'], .1),
     DependentOption('filter fraction', float, 'featureExtractor', ['fourier-descriptor'], .5),
     DependentOption('letters in ngram', float, 'linguist', ['n-gram', 'spelling'], 3),
-    DependentOption('edit distance', int, 'linguist', ['spelling'], 5)
+    DependentOption('edit distance', int, 'linguist', ['spelling', 'whole-word-n-gram'], 5)
 ]
 
 for option in dependentOptions:
