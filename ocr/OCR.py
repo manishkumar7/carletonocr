@@ -194,7 +194,7 @@ dependentOptions = [
     DependentOption('lookback', int, 'typesetter', ['linear'], 0),
     DependentOption('space width', float, 'typesetter', ['linear'], 0.4, "What proportion of the average character width is the width of a space"),
     DependentOption('proportion', float, 'binarizer', ['adaptive'], .3),
-    DependentOption('area threshold', float, 'segmenter', ['connected-component'], 8),
+    DependentOption('area threshold', float, 'segmenter', ['connected-component'], .03),
     DependentOption('fourier points', int, 'featureExtractor', ['fourier-descriptor'], 16),
     DependentOption('tolerance', float, 'featureExtractor', ['fourier-descriptor'], .1),
     DependentOption('filter fraction', float, 'featureExtractor', ['fourier-descriptor'], .5),
