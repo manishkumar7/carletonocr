@@ -141,6 +141,7 @@ class SpellingLinguist(Linguist):
         output = []
         word = []
         for character in characterPossibilities:
+            #print character
             if isinstance(character, str):
                 output.extend(self.correctWord(word))
                 word = []
@@ -163,6 +164,7 @@ class SpellingLinguist(Linguist):
                 charactersProbability = sum(map(negativeLog, probabilities)) / len(string)
                 wordProbability = negativeLog(self.dictionary[string]/float(self.count))
                 probability = self.selfImportance*wordProbability + (1 - self.selfImportance)*charactersProbability
+                #print string, charactersProbability, wordProbability, probability
                 candidates.append((string, probability))
 
         candidate = (0,)*len(characterPossibilities)

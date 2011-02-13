@@ -1,5 +1,6 @@
 import cv
 import heapq
+import math
 
 class knnMatcher(object):
     def __init__(self, library, k):
@@ -14,18 +15,23 @@ class knnMatcher(object):
         #We keep track of features now for the visualization
         for character, features in self.library:
             similarity = charFeatures.similarity(features)
-            sum += similarity
             if len(best) < self.k:
                 heapq.heappush(best, (similarity, character, features))
             elif similarity > best[0][0]:
                 heapq.heappop(best)
                 heapq.heappush(best, (similarity, character, features))
-        return [(scf[0]/(sum*(place+1)), scf[1], scf[2]) for (scf, place) in zip(reversed(best), range(self.k))]
+        return best
 
     def voteDict(self, best):
-        voteDict = {}
+        sum = 0
         for similarity, character, features in best:
-            voteDict[character] = voteDict.get(character, 0) + similarity
+            sum += similarity
+        best = sorted(best, key=lambda guess: guess[0], reverse=True)
+        voteDict = {}
+        def weight(similarity, place):
+            return similarity/(sum*(place+1))
+        for (scf, place) in zip(best, range(len(best))):
+            voteDict[scf[1]] = voteDict.get(scf[1], 0) + weight(scf[0], place)
         return voteDict.items()
 
     def visualize(self, chFeatures, possFeatures):

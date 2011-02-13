@@ -173,10 +173,9 @@ def contourArea(points):
                         
 
 class FourierComparison(FeatureExtractor):
-    def __init__(self, fourierPoints, tolerance, areaThreshold, filterFraction):
+    def __init__(self, fourierPoints, tolerance, filterFraction):
         self.fourierPoints = fourierPoints
         self.tolerance = tolerance
-        self.areaThreshold = areaThreshold
         self.filterLength = int(filterFraction * fourierPoints)
 
     class Curve(object):
@@ -274,7 +273,6 @@ class FourierComparison(FeatureExtractor):
         image = self.broaden(image)
         contours = self.contours(image)
         data = [FourierComparison.Curve(curve) for curve in contours]
-        data = [curve for curve in data if curve.area > AREA_THRESHOLD]
         curveKinds = partition(data, lambda curve: curve.area > 0)
         displacement = minusTuples(self.averageCentroid(curveKinds[0]), self.averageCentroid(curveKinds[1]))
         curveAggregate = []
