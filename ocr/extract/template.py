@@ -6,16 +6,7 @@ class TemplateImage(Features):
 
     def __init__(self, image):
         self.image = image
-        self.array = numpy.zeros((image.width, image.height), dtype=bool)
-        for row in range(self.image.height):
-            for col in range(self.image.width):
-                value = image[row, col]
-                if value == 255:
-                    self.array[row, col] = True
-                elif value == 0:
-                    self.array[row, col] = False
-                else:
-                    raise Exception("This can't happen!")
+        self.array = numpyOfImage(image)
         self.notarray = numpy.invert(self.array)
 
     def similarity(self, other):

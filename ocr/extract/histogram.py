@@ -1,20 +1,16 @@
-import cv, math
+import numpy
 from feature_extractor import *
 
-class ImageTranspose(object):
-    def __init__(self, image):
-        self.image = image
-        self.width = image.width
-        self.height = image.height
-    def __getitem__(self, index):
-        return self.image[index[1], index[0]]
-
-class HorizontalHistogram(Features):
-    def __init__(self, image):
+class Histogram(Features):
+    def __init__(self, image, axis):
         self.size = (image.width, image.height)
-        self.histogram = [sum(((image[row, col] == 0 and 1) or 0) for col in range(image.width)) for row in range(image.height)]
+        self.histogram = numpy.sum(numpy.invert(numpyOfImage(image)), axis=axis)
     def similarity(self, other):
-        return 1.0/(sum(abs(mine-yours) for (mine, yours) in zip(self.histogram, other.histogram))+1)
+        return 1.0/(numpy.sum(numpy.absolute(numpy.subtract(self.histogram, other.histogram)))+1)
+
+class HorizontalHistogram(Histogram):
+    def __init__(self, image):
+        Histogram.__init__(self, image, 1)
     def visualize(self):
         vis = whiteImage(self.size)
         for i in range(len(self.histogram)):
@@ -22,11 +18,9 @@ class HorizontalHistogram(Features):
                 vis [i,j] = (0,0,255)
         return vis
 
-class VerticalHistogram(HorizontalHistogram):
+class VerticalHistogram(Histogram):
     def __init__(self, image):
-        image = ImageTranspose(image)
-        self.histogram = [sum(((image[row, col] == 0 and 1) or 0) for col in range(image.width)) for row in range(image.height)]
-        self.size = (image.width, image.height)
+        Histogram.__init__(self, image, 0)
     def visualize(self):
         vis = whiteImage(self.size)
         for i in range(len(self.histogram)):

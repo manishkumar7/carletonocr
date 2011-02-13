@@ -1,4 +1,4 @@
-import cv
+import cv, numpy
 
 class FeatureExtractor(object):
     def extract(self, input):
@@ -61,3 +61,16 @@ def visualizeFeatures(pieces, features):
                         featuresVisual[y+row+curVis.height, x+col] = (0,0,0)
             x += (int(spaceWidth) + chr.width)
     return featuresVisual
+
+def numpyOfImage(image):
+    array = numpy.zeros((image.width, image.height), dtype=bool)
+    for row in range(image.height):
+        for col in range(image.width):
+            value = image[row, col]
+            if value == 255:
+                array[row, col] = True
+            elif value == 0:
+                array[row, col] = False
+            else:
+                raise Exception("This can't happen!")
+    return array
