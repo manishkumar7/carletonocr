@@ -72,7 +72,21 @@ class NGramLinguist(StreamLinguist):
     def __init__(self, selfImportance, lettersInNgram):
         StreamLinguist.__init__(self, selfImportance)
         self.n = lettersInNgram
-        self.port = random.randint(10000, 50000) #We should really retry if the port is taken, but this is unlikely
+        connected = False
+        while not connected:
+            connected = True
+            self.port = random.randint(5000,10000)
+            print "trying port", self.port
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                s.bind(('localhost', self.port))
+            except socket.error, e:
+                if e[0] == 13:
+                    connected = False
+                else:
+                    print "Unexpected socket stuff"
+                    sys.exit(1)
+            s.close()
         self.server = os.spawnv(os.P_NOWAIT, 'ngram', ['ngram', '-server-port', str(self.port), '-lm', 'language-model.txt'])
         time.sleep(.1)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
