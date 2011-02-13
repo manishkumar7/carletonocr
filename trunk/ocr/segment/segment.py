@@ -41,7 +41,6 @@ class ConnectedComponentSegmenter(Segmenter):
         standardDev = math.sqrt(float(len(output))**-1 * sum([pow(component[1] - average, 2) for component in output]))
         def formula():
             return math.sqrt(standardDev * average * math.sqrt(average/standardDev) * pow(self.areaThreshold, 2))
-        print average, standardDev, formula()
         return [component[0] for component in output if component[1] > formula()]
     
     def findConnectedComponents(self, image, pixel, pixels):
