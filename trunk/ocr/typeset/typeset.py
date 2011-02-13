@@ -25,12 +25,10 @@ class Typesetter(object):
         spaceWidth = float(totX)/sum([l[1] for l in lines])
         for i in range(len(lines)):
             lines[i][1] += lines[i][0]*spaceWidth + lines[i][2]*spaceWidth*9
-        imWidth = max([l[1] for l in lines]) + 2*spaceWidth
+        imWidth = max(l[1] for l in lines) + 2*spaceWidth
         imHeight = numLines * yMax + (numLines - 1) * .5 * yMax + 2*spaceWidth
         typesetVisual = cv.CreateImage((int(imWidth), int(imHeight)), 8, 3)
-        for row in range(typesetVisual.height):
-            for col in range(typesetVisual.width):
-                typesetVisual[row, col] = (255,255,255)
+        cv.Rectangle(typesetVisual, (0, 0), (typesetVisual.width, typesetVisual.height), (255, 255, 255), cv.CV_FILLED)
         xStart = int(spaceWidth)
         y = int(spaceWidth)
         x = xStart
@@ -43,10 +41,11 @@ class Typesetter(object):
                 y += int(yMax*1.5)
                 cv.Rectangle(typesetVisual, (0, int(y-yMax*.5)), (typesetVisual.width, y), cv.RGB(10, 10, 200), -1)        
             else:
+                heightOffset = yMax - chr.height
                 for row in range(chr.height):
                     for col in range(chr.width):
                         if chr[row, col]  < 1:
-                            typesetVisual[y+row, x+col] = (0,0,0)
+                            typesetVisual[y+row+heightOffset, x+col] = (0,0,0)
                 x += (int(spaceWidth) + chr.width)
         return typesetVisual
 
