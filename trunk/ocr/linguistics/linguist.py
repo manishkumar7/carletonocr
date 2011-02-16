@@ -129,8 +129,39 @@ class WordLinguist(Linguist):
     def correct(self, characterPossibilities):
         output = []
         word = []
-        for character in characterPossibilities:
-            if isinstance(character, str):
+        endPunc = [')',',','.','!','?',':',';','"',"'",'*']
+        startPunc = ['(','"',"'"] 
+        def isPunc(character, puncList):
+            '''returns true if the most probable character is in the puncList, else returns False'''
+            bestCh = ''
+            maxProb = 0
+            for ch in character:
+                if ch[1] > maxProb:
+                    maxProb = ch[1]
+                    bestCh = ch[0]
+            if bestCh in puncList:
+                return True
+            return False
+        
+        for i in range(len(characterPossibilities)):
+            #sends punctuation, as identified by the isPunc function, to the correctWord function 
+            #separately from whatever words it precedes or follows because that is the format of the
+            #brown corpus
+            character = characterPossibilities[i]
+            if i > 0 and isinstance(characterPossibilities[i-1], str) and isPunc(character,startPunc):
+                output.extend(self.correctWord([character]))
+                word = []
+            elif i == 0 and isPunc(character, startPunc):
+                output.extend(self.correctWord([character]))            
+            elif i < len(characterPossibilities)-1 and isinstance(characterPossibilities[i+1], str) and isPunc(character,endPunc):
+                output.extend(self.correctWord(word))
+                word = []
+                output.extend(self.correctWord([character]))
+            elif i == len(characterPossibilities)-1 and isPunc(character, endPunc):
+                output.extend(self.correctWord(word))
+                word = []
+                output.extend(self.correctWord([character]))                
+            elif isinstance(character, str):
                 output.extend(self.correctWord(word))
                 word = []
                 output.append(character)
@@ -140,6 +171,8 @@ class WordLinguist(Linguist):
         return SimpleResult(output, characterPossibilities)
 
     def correctWord(self, characterPossibilities):
+        if len(characterPossibilities) == 0:
+            return []
         characterPossibilities = map(lambda lst: sorted(lst, key=lambda c: c[1], reverse=True), characterPossibilities)
         candidates = []
         def counted(iterable):
