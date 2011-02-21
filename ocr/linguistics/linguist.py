@@ -79,6 +79,7 @@ class NGramProgram(object):
             self.port = random.randint(5000,50000)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
+                print "trying", self.port
                 s.bind(('localhost', self.port))
             except socket.error, e:
                 if e[0] == 13:
@@ -87,7 +88,8 @@ class NGramProgram(object):
                     sys.exit(1)
             s.close()
         self.server = os.spawnv(os.P_NOWAIT, 'ngram', ['ngram', '-server-port', str(self.port), '-lm', 'language-model.txt'])
-        time.sleep(.1)
+        time.sleep(.5)
+        print "connecting", self.port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect(('localhost', self.port))
 
