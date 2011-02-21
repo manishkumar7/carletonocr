@@ -1,6 +1,6 @@
 import cv
 import os
-import binarize, extract, linguistics, match, typeset, segment
+import binarize, extract, linguistics, match, typeset, segment, threshold
 import copy
 
 def eachChar(fn, lines):
@@ -43,14 +43,25 @@ class OCRRunner(object):
             if options.saveSegmented != None:
                 segVisual = segment.visualize(self.blackAndWhite, self.characterPieces)
                 cv.SaveImage(options.saveSegmented, segVisual)
+        thresholdChanged = self.varChanged('threshold', options)
+        if thresholdChanged:
+            options.showStatus("Initializing threshold")
+            self.threshold = options.get('threshold')
+        redoThreshold = thresholdChanged or redoSegmentedImage
+        if redoThreshold:
+            options.showStatus("Thresholding image")
+            self.thresholdCharacterPieces = self.threshold.filter(self.characterPieces)
+            if options.saveThreshold != None:
+                threshVisual = segment.visualize(self.blackAndWhite, self.thresholdCharacterPieces)
+                cv.SaveImage(options.saveThreshold, threshVisual)
         typesetterChanged = self.varChanged('typesetter', options)
         if typesetterChanged:
             options.showStatus("Initializing typesetter")
             self.typesetter = options.get('typesetter')
-        redoTypeset = typesetterChanged or redoSegmentedImage
+        redoTypeset = typesetterChanged or redoThreshold
         if redoTypeset:
             options.showStatus("Typesetting image")
-            self.pieces = self.typesetter.typeset(self.characterPieces)
+            self.pieces = self.typesetter.typeset(self.thresholdCharacterPieces)
             if options.saveTypeset != None:
                 typesetVisual = typeset.visualize(self.pieces)
                 cv.SaveImage(options.saveTypeset, typesetVisual)
@@ -139,6 +150,11 @@ classMap = {
         'n-gram': linguistics.NGramLinguist,
         'whole-word-n-gram': linguistics.WholeWordNGramLinguist,
         'spelling': linguistics.SpellingLinguist
+    },
+    'threshold': {
+        'const-threshold': threshold.ConstThreshold,
+        'proportion-threshold': threshold.ProportionThreshold,
+        'adaptive-threshold': threshold.AdaptiveThreshold
     }
 }
 
@@ -162,6 +178,7 @@ defaultOptions.typesetter = 'linear'
 defaultOptions.featureExtractor = 'template'
 defaultOptions.scaler = 'proportional'
 defaultOptions.linguist = 'n-gram'
+defaultOptions.threshold = 'adaptive-threshold'
 defaultOptions.selfImportance = .3
 defaultOptions.saveBinarized = None
 defaultOptions.saveSegmented = None
@@ -169,6 +186,7 @@ defaultOptions.saveTypeset = None
 defaultOptions.saveFeatures = None
 defaultOptions.saveMatcher = None
 defaultOptions.saveLinguist = None
+defaultOptions.saveThreshold = None
 defaultOptions.showStatus = lambda status: None
 defaultOptions.library = "/Library/Fonts/"
 
@@ -192,12 +210,14 @@ dependentOptions = [
     DependentOption('lookback', int, 'typesetter', ['linear'], 0),
     DependentOption('space width', float, 'typesetter', ['linear'], 0.4, "What proportion of the average character width is the width of a space"),
     DependentOption('proportion', float, 'binarizer', ['adaptive'], .3),
-    DependentOption('area threshold', float, 'segmenter', ['connected-component'], .025),
     DependentOption('fourier points', int, 'featureExtractor', ['fourier-descriptor'], 16),
     DependentOption('tolerance', float, 'featureExtractor', ['fourier-descriptor'], .1),
     DependentOption('filter fraction', float, 'featureExtractor', ['fourier-descriptor'], .5),
     DependentOption('letters in ngram', float, 'linguist', ['n-gram', 'spelling'], 3),
-    DependentOption('edit distance', int, 'linguist', ['spelling', 'whole-word-n-gram'], 5)
+    DependentOption('edit distance', int, 'linguist', ['spelling', 'whole-word-n-gram'], 5),
+    DependentOption('pixel threshold', int, 'threshold', ['const-threshold'], 5),
+    DependentOption('threshold proportion', float, 'threshold', ['proportion-threshold'], .025),
+    DependentOption('area threshold', float, 'threshold', ['adaptive-threshold'], .025)
 ]
 
 for option in dependentOptions:
