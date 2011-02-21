@@ -3,6 +3,12 @@ import os
 import binarize, extract, linguistics, match, typeset, segment
 import copy
 
+def eachChar(fn, lines):
+    return eachWord(lambda word: map(fn, word), lines)
+
+def eachWord(fn, lines):
+    return [[fn(word) for word in line] for line in lines]
+
 class OCRRunner(object):
     def __init__(self):
         self.options = None
@@ -10,14 +16,6 @@ class OCRRunner(object):
     def varChanged(self, attr, other):
         return self.options is None or getattr(self.options, attr) != getattr(other, attr) \
             or True in (self.varChanged(at, other) for at in other.potential(attr))
-
-    def toNonString(self, fn, lst):
-        def do(piece):
-            if isinstance(piece, str):
-                return piece
-            else:
-                return fn(piece)
-        return map(do, lst)
 
     def withOptions(self, options):
         targetChanged = self.varChanged('target', options)
@@ -43,7 +41,7 @@ class OCRRunner(object):
             options.showStatus("Segmenting image")
             self.characterPieces = self.segmenter.segment(self.blackAndWhite)
             if options.saveSegmented != None:
-                segVisual = self.segmenter.showSegments(self.blackAndWhite, self.characterPieces)
+                segVisual = segment.visualize(self.blackAndWhite, self.characterPieces)
                 cv.SaveImage(options.saveSegmented, segVisual)
         typesetterChanged = self.varChanged('typesetter', options)
         if typesetterChanged:
@@ -54,7 +52,7 @@ class OCRRunner(object):
             options.showStatus("Typesetting image")
             self.pieces = self.typesetter.typeset(self.characterPieces)
             if options.saveTypeset != None:
-                typesetVisual = self.typesetter.showTypesetting(self.pieces)
+                typesetVisual = typeset.visualize(self.pieces)
                 cv.SaveImage(options.saveTypeset, typesetVisual)
         scalerChanged = self.varChanged('scaler', options) or self.varChanged('dimension', options)
         if scalerChanged:
@@ -66,7 +64,7 @@ class OCRRunner(object):
             bin = binarize.SimpleBinarizer()
             def scaleAndRebinarize(image):
                 return bin.binarize(self.scaler.scale(image))
-            self.scaled = self.toNonString(scaleAndRebinarize, self.pieces)
+            self.scaled = eachChar(scaleAndRebinarize, self.pieces)
         featureExtractorChanged = self.varChanged('featureExtractor', options)
         if featureExtractorChanged:
             options.showStatus("Initializing feature extractor")
@@ -74,9 +72,9 @@ class OCRRunner(object):
         redoFeatureExtractor = featureExtractorChanged or redoScale
         if redoFeatureExtractor:
             options.showStatus("Extracting features from image")
-            self.features = self.toNonString(self.featureExtractor.extract, self.scaled)
+            self.features = eachChar(self.featureExtractor.extract, self.scaled)
             if options.saveFeatures != None:
-                featuresVisual = extract.visualizeFeatures(self.scaled, self.features)
+                featuresVisual = extract.visualize(self.scaled, self.features)
                 cv.SaveImage(options.saveFeatures, featuresVisual)
         libraryChanged = not hasattr(self, 'rawLibrary')
         if libraryChanged or self.varChanged('library', options):
@@ -99,14 +97,14 @@ class OCRRunner(object):
         matcherChanged = kChanged or redoLibraryFeatureExtract
         if matcherChanged:
             options.showStatus("Initializing matcher")
-            self.matcher = match.knnMatcher(self.library, options.k)
+            self.matcher = match.Matcher(self.library, options.k)
         redoPossibilities = matcherChanged or redoFeatureExtractor
         if redoPossibilities:
             options.showStatus("Matching characters to library")
-            best = self.toNonString(self.matcher.bestFew, self.features)
-            self.voteDict = self.toNonString(self.matcher.voteDict, best)
+            best = eachChar(self.matcher.bestFew, self.features)
+            self.voteDict = eachChar(self.matcher.voteDict, best)
             if options.saveMatcher != None:
-                matcherVisual = self.matcher.visualize(self.features, best)
+                matcherVisual = match.visualize(self.features, best)
                 cv.SaveImage(options.saveMatcher, matcherVisual)
         linguistChanged = self.varChanged('linguist', options) or self.varChanged('selfImportance', options)
         if linguistChanged:

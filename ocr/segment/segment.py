@@ -8,25 +8,40 @@ class Segmenter:
         '''Given a black and white image, return a list of image
         pieces which each stand for an individual character'''
         return []
-        
-    def showSegments(self, blackAndWhite, characterPieces):
-        segVisual = cv.CreateImage((blackAndWhite.width, blackAndWhite.height), 8, 3)
-        for row in range(segVisual.height):
-        	for col in range(segVisual.width):
-        		segVisual[row, col] = (255,255,255)
-        for box, image in characterPieces:
-        	for row in range(box[3]):
-        		for col in range(box[2]):
-        			if image[row, col]  < 1:
-        				segVisual[box[1]+row, box[0]+col] = (0,0,0)
-        	cv.Rectangle(segVisual, (box[0],box[1]), (box[0]+box[2],box[1]+box[3]), cv.RGB(0, 200, 0), 1, 8)        
-        return segVisual
+
+def visualize(blackAndWhite, characterPieces):
+    segVisual = cv.CreateImage((blackAndWhite.width, blackAndWhite.height), 8, 3)
+    for row in range(segVisual.height):
+        for col in range(segVisual.width):
+            segVisual[row, col] = (255,255,255)
+    for box, image in characterPieces:
+        for row in range(box[3]):
+            for col in range(box[2]):
+                if image[row, col]  < 1:
+                    segVisual[box[1]+row, box[0]+col] = (0,0,0)
+        cv.Rectangle(segVisual, (box[0],box[1]), (box[0]+box[2],box[1]+box[3]), cv.RGB(0, 200, 0), 1, 8)        
+    return segVisual
+
+def box(points):
+    minRow, minCol, maxRow, maxCol = 99999999999,99999999999,0,0
+    for point in points:
+        if point[0] < minRow:
+            minRow = point[0]
+        if point[0] > maxRow:
+            maxRow = point[0]
+    for point in points:
+        if point[1] < minCol:
+            minCol = point[1]
+        if point[1] > maxCol:
+            maxCol = point[1]
+    #(x,y,width,height)
+    return (minCol-1, minRow-1, maxCol-minCol+2, maxRow-minRow+2)
 
 class ConnectedComponentSegmenter(Segmenter):
 
     def __init__(self, areaThreshold):
         self.areaThreshold = areaThreshold
-    
+
     def segment(self, blackAndWhite):
         pixels = set((row,col) for row in range(blackAndWhite.height) for col in range(blackAndWhite.width))
         output, average = [], 0.0
@@ -42,7 +57,7 @@ class ConnectedComponentSegmenter(Segmenter):
         def formula():
             return math.sqrt(standardDev * average * math.sqrt(average/standardDev) * pow(self.areaThreshold, 2))
         return [component[0] for component in output if component[1] > formula()]
-    
+
     def findConnectedComponents(self, image, pixel, pixels):
         points = set([pixel])
         pointsToSearch = [pixel]
@@ -62,25 +77,10 @@ class ConnectedComponentSegmenter(Segmenter):
         for point in points:
             if point in pixels:
                 pixels.remove(point)
-        boundingBox = self.boundingBox(points)
+        boundingBox = box(points)
         newImage = self.createImage(boundingBox, points)
         return ((boundingBox, newImage), len(points))
-    
-    def boundingBox(self, points):
-        minRow, minCol, maxRow, maxCol = 99999999999,99999999999,0,0
-        for point in points:
-            if point[0] < minRow:
-                minRow = point[0]
-            if point[0] > maxRow:
-                maxRow = point[0]
-        for point in points:
-            if point[1] < minCol:
-                minCol = point[1]
-            if point[1] > maxCol:
-                maxCol = point[1]
-        #(x,y,width,height)
-        return (minCol-1, minRow-1, maxCol-minCol+2, maxRow-minRow+2)
-    
+
     def createImage(self, boundingBox, points):
         newImage = cv.CreateImage((boundingBox[2], boundingBox[3]), 8, 1)
         for row in range(boundingBox[3]):
@@ -136,20 +136,4 @@ class BoundingBoxSegmenter(Segmenter):
                     adjacentPoints.add(p)
             points |= adjacentPoints
             pointsToSearch.extend(list(adjacentPoints))
-        return self.boundingBox(points)
-        
-    def boundingBox(self, points):
-        minRow, minCol, maxRow, maxCol = 99999999999,99999999999,0,0
-        for point in points:
-            if point[0] < minRow:
-                minRow = point[0]
-            if point[0] > maxRow:
-                maxRow = point[0]
-        for point in points:
-            if point[1] < minCol:
-                minCol = point[1]
-            if point[1] > maxCol:
-                maxCol = point[1]
-        #(x,y,width,height)
-        return (minCol, minRow, maxCol-minCol, maxRow-minRow)
-
+        return box(points)

@@ -10,6 +10,32 @@ import itertools
 
 INFINITY = 1000000
 
+def toString(lines):
+    return '\n'.join(' '.join(''.join(word) for word in line) for line in lines)
+
+def splitWords(line, fn):
+    def split(word):
+        output = []
+        lastChar = None
+        currentWord = []
+        for char in word:
+            if lastChar and fn(char, lastChar):
+                if currentWord: output.append(currentWord)
+                currentWord = []
+            currentWord.append(char)
+            lastChar = char
+        if currentWord: output.append(currentWord)
+        return output
+    return map(split, line)
+
+def eachWord(fn, lines):
+    return [[fn(word) for word in line] for line in lines]
+
+def concat(lst):
+    output = []
+    for sub in lst: output.extend(sub)
+    return lst
+
 def negativeLog(n):
     if n == 0:
         return INFINITY
@@ -21,43 +47,66 @@ class SimpleResult(object):
         self.string = string
         self.characterPossibilities = characterPossibilities
     def result(self):
-        return ''.join(self.string)
+        return toString(self.string)
     def inputString(self):
         return NullLinguist(0.0).correct(self.characterPossibilities).result()
     def visualize(self):
         return 'Before correction: %s\nAfter correction: %s' % (self.inputString(), self.result())
 
+punctuation = set([')',',','.','!','?',':',';','"',"'",'*', '(', '~', ']', '['])
+def isPunct(possibilities):
+    '''returns true if we expect that there is a break between the characters'''
+    yes = 0
+    no = 0
+    for char, prob in possibilities:
+        if char in punctuation:
+            yes += prob
+        else:
+            no += prob
+    return yes > no
+
 class Linguist(object):
     def __init__(self, selfImportance):
         self.selfImportance = selfImportance
+
+    def correct(self, lines):
+        def shouldSplit(first, second):
+            return isPunct(first) or isPunct(second)
+        output = []
+        for line in lines:
+            lineOutput = []
+            words = splitWords(line, shouldSplit)
+            for word in words:
+                wordOutput = []
+                for subword in word:
+                    wordOutput.extend(self.correctWord(subword))
+                lineOutput.append(wordOutput)
+            output.append(lineOutput)
+        return SimpleResult(output, lines)
 
 class StreamLinguist(Linguist):
     #Future subclasses:
     #n-grams (for words and for characters) -- would need library
     #Deeper linguistic knowledge?
 
-    def correct(self, characterPossibilities):
+    def correctWord(self, characterPossibilities):
         '''Correct errors based on linguistic knowledge'''
         #print characterPossibilities
-        context = [self.makeContext()]
+        context = self.makeContext()
         def transform(item):
-            if isinstance(item, str):
-                context[0] = self.makeContext()
-                return item
-            else:
-                maxProbability = 10*INFINITY
-                bestLetter = ''
-                for character, probability in item:
-                    realProbability = self.probability(probability, self.modelProbability(character, context[0]))
-                    if realProbability < maxProbability:
-                        bestLetter = character
-                        maxProbability = realProbability
-                self.updateContext(context[0], bestLetter)
-                return bestLetter
-        output = map(transform, characterPossibilities)
-        return SimpleResult(output, characterPossibilities)
+            maxProbability = 10*INFINITY
+            bestLetter = ''
+            for character, probability in item:
+                realProbability = self.chance(probability, character, context)
+                if realProbability < maxProbability:
+                    bestLetter = character
+                    maxProbability = realProbability
+            self.updateContext(context, bestLetter)
+            return bestLetter
+        return map(transform, characterPossibilities)
 
-    def probability(self, oldProb, newProb):
+    def chance(self, oldProb, character, context):
+        newProb = self.probability(character, context)
         return negativeLog(oldProb)*(1-self.selfImportance) + newProb*self.selfImportance 
 
 class NullLinguist(StreamLinguist):
@@ -68,7 +117,7 @@ class NullLinguist(StreamLinguist):
     def updateContext(self, context, letter):
         pass
 
-    def modelProbability(self, character, context):
+    def probability(self, character, context):
         return 1
 
 class NGramProgram(object):
@@ -89,7 +138,6 @@ class NGramProgram(object):
             s.close()
         self.server = os.spawnv(os.P_NOWAIT, 'ngram', ['ngram', '-server-port', str(self.port), '-lm', 'language-model.txt'])
         time.sleep(.5)
-        print "connecting", self.port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect(('localhost', self.port))
 
@@ -123,62 +171,17 @@ class NGramLinguist(StreamLinguist):
         if len(context) == self.n:
             context.pop(0)
     
-    def modelProbability(self, character, context):
+    def probability(self, character, context):
         return self.ngramProgram.probability(' '.join(context+[character]))
+
+def counted(iterable):
+    return itertools.izip(itertools.count(), iterable)
 
 class WordLinguist(Linguist):
 
-    def correct(self, characterPossibilities):
-        output = []
-        word = []
-        endPunc = [')',',','.','!','?',':',';','"',"'",'*']
-        startPunc = ['(','"',"'"] 
-        def isPunc(character, puncList):
-            '''returns true if the most probable character is in the puncList, else returns False'''
-            bestCh = ''
-            maxProb = 0
-            for ch in character:
-                if ch[1] > maxProb:
-                    maxProb = ch[1]
-                    bestCh = ch[0]
-            if bestCh in puncList:
-                return True
-            return False
-        
-        for i in range(len(characterPossibilities)):
-            #sends punctuation, as identified by the isPunc function, to the correctWord function 
-            #separately from whatever words it precedes or follows because that is the format of the
-            #brown corpus
-            character = characterPossibilities[i]
-            if i > 0 and isinstance(characterPossibilities[i-1], str) and isPunc(character,startPunc):
-                output.extend(self.correctWord([character]))
-                word = []
-            elif i == 0 and isPunc(character, startPunc):
-                output.extend(self.correctWord([character]))            
-            elif i < len(characterPossibilities)-1 and isinstance(characterPossibilities[i+1], str) and isPunc(character,endPunc):
-                output.extend(self.correctWord(word))
-                word = []
-                output.extend(self.correctWord([character]))
-            elif i == len(characterPossibilities)-1 and isPunc(character, endPunc):
-                output.extend(self.correctWord(word))
-                word = []
-                output.extend(self.correctWord([character]))                
-            elif isinstance(character, str):
-                output.extend(self.correctWord(word))
-                word = []
-                output.append(character)
-            else:
-                word.append(character)
-        output.extend(self.correctWord(word))
-        return SimpleResult(output, characterPossibilities)
-
     def correctWord(self, characterPossibilities):
-        if len(characterPossibilities) == 0:
-            return []
         characterPossibilities = map(lambda lst: sorted(lst, key=lambda c: c[1], reverse=True), characterPossibilities)
         candidates = []
-        def counted(iterable):
-            return itertools.izip(itertools.count(), iterable)
 
         def extract(candidate):
             letters, probabilities = zip(*[characterPossibilities[i][c] for (i, c) in counted(candidate)])

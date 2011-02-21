@@ -1,1 +1,1 @@
-from segment import Segmenter, ConnectedComponentSegmenter, BoundingBoxSegmenter
+from segment import Segmenter, ConnectedComponentSegmenter, BoundingBoxSegmenter, visualize

@@ -1,1 +1,1 @@
-from match import knnMatcher
+from match import Matcher, visualize
