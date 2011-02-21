@@ -14,52 +14,36 @@ def whiteImage(size):
     cv.Rectangle(vis, (0,0), size, cv.RGB(255, 255, 255), -1)        
     return vis
 
-def visualizeFeatures(pieces, features):
-    numLines = pieces.count('\n') + 1
-    lines = []
-    for i in range(numLines):
-        #line = [# chrs, sum of chr widths, # spaces]
-        lines.append([0,0,0])
-    curLine = 0
-    yMax = 0
-    for chr in pieces:
-        if chr == ' ':
-            lines[curLine][2] += 1
-        elif chr == '\n':
-            curLine += 1
-        else:
-            lines[curLine][0] += 1
-            lines[curLine][1] += chr.width
-            if chr.height > yMax:
-                yMax = chr.height
-    totX = sum([l[1] for l in lines])
-    spaceWidth = pieces[0].width * .15
-    for i in range(len(lines)):
-        lines[i][1] += lines[i][0]*spaceWidth + lines[i][2]*spaceWidth*9
-    imWidth = max([l[1] for l in lines]) + 2*spaceWidth
-    betwLines = 10
-    imHeight = numLines * ((2 * yMax) + betwLines)
-    featuresVisual = cv.CreateImage((int(imWidth), int(imHeight)), 8, 3)
-    cv.Rectangle(featuresVisual, (0,0), (featuresVisual.width, featuresVisual.height), (255,255,255), -1)
-    xStart = spaceWidth
-    y = 0
-    x = xStart
-    for chr, feature in zip(pieces, features):
-        if chr == ' ':
-            x += int(spaceWidth * 9)
-        elif chr == '\n':
-            x = xStart
-            y += int(yMax*2)+betwLines
-        else:
-            curVis = feature.visualize()
-            for row in range(curVis.height):
-                for col in range(curVis.width):
-                    featuresVisual[y+row, x+col] = curVis[row, col]
-            for row in range(chr.height):
-                for col in range(chr.width):
-                    if chr[row, col]  < 1:
-                        featuresVisual[y+row+curVis.height, x+col] = (0,0,0)
-            x += (int(spaceWidth) + chr.width)
+def visualize(lines, features):
+    charHeight = lines[0][0][0].height
+    charWidth = lines[0][0][0].width
+    rowHeight = charHeight * 2
+    lineSpacing = charHeight/2
+    subSpacing = lineSpacing/2
+    newLine = rowHeight + lineSpacing + subSpacing
+    spaceWidth = 2*charWidth/5
+    padding = spaceWidth/2
+    imWidth = max(sum(map(len, line))*(charWidth+padding) - padding + spaceWidth*(len(line)+1) for line in lines)
+    imHeight = len(lines) * newLine + 2*spaceWidth - lineSpacing
+    featuresVisual = cv.CreateImage((imWidth, imHeight), 8, 3)
+    cv.Rectangle(featuresVisual, (0, 0), (imWidth, imHeight), (255, 255, 255), cv.CV_FILLED)
+
+    y = spaceWidth
+    for chrLine, featureLine in zip(lines, features):
+        x = spaceWidth
+        for chrWord, featureWord in zip(chrLine, featureLine):
+            for chr, feature in zip(chrWord, featureWord):
+                curVis = feature.visualize()
+                assert charHeight == curVis.height == chr.height
+                assert charWidth == curVis.width == chr.width
+                for row in range(charHeight):
+                    for col in range(charWidth):
+                        featuresVisual[y+row, x+col] = curVis[row, col]
+                        if chr[row, col]  < 1:
+                            featuresVisual[y+row+charHeight+subSpacing, x+col] = (0,0,0)
+                x += padding + charWidth
+            x += spaceWidth
+        y += newLine
     return featuresVisual
 
 def numpyOfImage(image):
@@ -72,5 +56,5 @@ def numpyOfImage(image):
             elif value == 0:
                 array[row, col] = False
             else:
-                raise Exception("This can't happen!")
+                raise Exception("There is a bug in the scaler or binarizer")
     return array

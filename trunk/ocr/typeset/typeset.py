@@ -1,54 +1,56 @@
 import cv
+import itertools
+
+def counted(iterable):
+    return itertools.izip(itertools.count(), iterable)
 
 class Typesetter(object):
     def typeset(self, characterPieces):
         return [character[1] for character in characterPieces]
-    def showTypesetting(self, pieces):
-        numLines = pieces.count('\n') + 1
-        lines = []
-        for i in range(numLines):
-            #line = [# chrs, sum of chr widths, # spaces]
-            lines.append([0,0,0])
-        curLine = 0
-        yMax = 0
-        for chr in pieces:
-            if chr == ' ':
-                lines[curLine][2] += 1
-            elif chr == '\n':
-                curLine += 1
-            else:
-                lines[curLine][0] += 1
-                lines[curLine][1] += chr.width
-                if chr.height > yMax:
-                    yMax = chr.height
-        totX = sum([l[1] for l in lines])
-        spaceWidth = float(totX)/sum([l[1] for l in lines])
-        for i in range(len(lines)):
-            lines[i][1] += lines[i][0]*spaceWidth + lines[i][2]*spaceWidth*9
-        imWidth = max(l[1] for l in lines) + 2*spaceWidth
-        imHeight = numLines * yMax + (numLines - 1) * .5 * yMax + 2*spaceWidth
-        typesetVisual = cv.CreateImage((int(imWidth), int(imHeight)), 8, 3)
-        cv.Rectangle(typesetVisual, (0, 0), (typesetVisual.width, typesetVisual.height), (255, 255, 255), cv.CV_FILLED)
-        xStart = int(spaceWidth)
-        y = int(spaceWidth)
-        x = xStart
-        for chr in pieces:
-            if chr == ' ':
-                cv.Rectangle(typesetVisual, (x,y), (int(x+spaceWidth*9), y+yMax), cv.RGB(10, 200, 10), -1)        
-                x += int(spaceWidth * 9)
-            elif chr == '\n':
-                x = xStart
-                y += int(yMax*1.5)
-                cv.Rectangle(typesetVisual, (0, int(y-yMax*.5)), (typesetVisual.width, y), cv.RGB(10, 10, 200), -1)        
-            else:
-                heightOffset = yMax - chr.height
-                for row in range(chr.height):
-                    for col in range(chr.width):
-                        if chr[row, col]  < 1:
-                            typesetVisual[y+row+heightOffset, x+col] = (0,0,0)
-                x += (int(spaceWidth) + chr.width)
-        return typesetVisual
 
+def splitLines(lines, fn):
+    def splitLine(line):
+        lastChar = None
+        currentWord = []
+        newLine = [currentWord]
+        for char in line:
+            if lastChar and fn(char, lastChar, line):
+                currentWord = []
+                newLine.append(currentWord)
+            currentWord.append(char[1])
+            lastChar = char
+        return newLine
+    return map(splitLine, lines)
+
+def visualize(lines):
+    widths = [sum(char.width for word in line for char in word) for line in lines]
+    lineHeight = max(char.height for line in lines for word in line for char in word)
+    lineSpacing = lineHeight/2
+    newLine = lineHeight + lineSpacing
+    numChars = sum(len(word) for line in lines for word in line)
+    spaceWidth = int((.4*sum(widths))/numChars)
+    imWidth = max(width + spaceWidth*(len(line)+1) for width, line in zip(widths, lines))
+    imHeight = len(lines) * newLine + 2*spaceWidth - lineSpacing
+    typesetVisual = cv.CreateImage((imWidth, imHeight), 8, 3)
+    cv.Rectangle(typesetVisual, (0, 0), (imWidth, imHeight), (255, 255, 255), cv.CV_FILLED)
+    y = spaceWidth
+    for lineNum, line in counted(lines):
+        if lineNum != 0:
+            y += newLine
+            cv.Rectangle(typesetVisual, (0, y-lineSpacing), (imWidth, y-1), cv.RGB(10, 10, 200), -1)        
+        x = spaceWidth
+        for wordNum, word in counted(line):
+            if wordNum != 0:
+                cv.Rectangle(typesetVisual, (x,y), (x+spaceWidth, y+lineHeight), cv.RGB(10, 200, 10), -1)        
+                x += spaceWidth
+            for char in word:
+                heightOffset = lineHeight - char.height
+                for row in range(char.height):
+                    for col in range(char.width):
+                        if char[row, col] < 1:
+                            typesetVisual[y+row+heightOffset, x+col] = (0,0,0)
+                x += char.width
+    return typesetVisual
 
 def combineImages(box1, image1, box2, image2):
     outputBox = (min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[0]+box1[2], box2[0]+box2[2])-min(box1[0], box2[0]), max(box1[1]+box1[3], box2[1]+box2[3])-min(box1[1], box2[1]))
@@ -110,14 +112,12 @@ class LinearTypesetter(Typesetter):
             else:
                 return piece[0][0]
         return self.bestPieceBy(piecesLeft, utility)
-    
+
     def isaSpaceBetween(self, char, lastChar, line):
-        global SPACE_WIDTH
         averageWidth = sum(character[0][2] for character in line)/float(len(line))
         #Naive way to get the space width when displaying
-        SPACE_WIDTH = averageWidth
         return char[0][0]-(lastChar[0][0]+lastChar[0][2]) > averageWidth*self.spaceWidth
-        
+
     def lines(self, characterPieces):
         piecesLeft = set(characterPieces)
         lines = []
@@ -130,23 +130,13 @@ class LinearTypesetter(Typesetter):
                 currentLine.append(next)
             lines.append(currentLine)
         return lines
-    
+
     def spacesAndNewlines(self, lines):
-        output = []
-        for line in lines:
-            lastChar = None
-            for char in line:
-                if lastChar != None:
-                    if self.isaSpaceBetween(char, lastChar, line):
-                        output.append(' ')
-                lastChar = char
-                output.append(char) #OK up to here
-            output.append('\n')
-        return output[:-1]
-    
+        return splitLines(lines, self.isaSpaceBetween)
+
     def rangesOverlap(self, box1, box2, offset):
         return box1[offset] < box2[offset]+box2[offset+2] and box2[offset] < box1[offset]+box1[offset+2]
-        
+
     def combineVertical(self, line):
         accumulatedBox = None
         accumulatedImage = None
@@ -165,13 +155,6 @@ class LinearTypesetter(Typesetter):
         if accumulatedBox != None:
             newLine.append((accumulatedBox, accumulatedImage))
         return newLine
-    
+
     def typeset(self, characterPieces):
-        pieces = self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)])
-        output = []
-        for p in pieces:
-            if p == ' ' or p == '\n':
-                output.append(p)
-            else:
-                output.append(p[1])
-        return output
+        return self.spacesAndNewlines([self.combineVertical(line) for line in self.lines(characterPieces)])
