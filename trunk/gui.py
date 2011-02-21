@@ -161,6 +161,7 @@ class OCRWindow(object):
             ('image', "Original"),
             ('binarized', "Binarizer"),
             ('segmented', "Segmenter"),
+            ('threshold', "Threshold"),
             ('typesetter', "Typesetting"),
             ('features', "Feature extractor"),
             ('matcher', "Matcher"),
@@ -192,6 +193,7 @@ class OCRWindow(object):
         self.entry(frame, sizer, 'Internal dimension of characters', 'dimension', int)
         self.dropdown(frame, sizer, 'Binarizer', 'binarizer')
         self.dropdown(frame, sizer, 'Segmenter', 'segmenter')
+        self.dropdown(frame, sizer, 'Threshold', 'threshold')
         self.dropdown(frame, sizer, 'Typesetter', 'typesetter')
         self.dropdown(frame, sizer, 'Feature extractor', 'featureExtractor')
         self.entry(frame, sizer, 'k nearest neighbors', 'k', int)
@@ -228,6 +230,7 @@ class OCRWindow(object):
         self.runner = ocr.OCRRunner()
         self.options.saveBinarized = name()
         self.options.saveSegmented = name()
+        self.options.saveThreshold = name()
         self.options.saveTypeset = name()
         self.options.saveFeatures = name()
         self.options.saveMatcher = name()
@@ -293,6 +296,7 @@ class OCRWindow(object):
             if self.hasBeenRun:
                 self.binarized.reload(self.options.saveBinarized)
                 self.segmented.reload(self.options.saveSegmented)
+                self.threshold.reload(self.options.saveThreshold)
                 self.typesetter.reload(self.options.saveTypeset)
                 self.features.reload(self.options.saveFeatures)
                 self.matcher.reload(self.options.saveMatcher)
@@ -304,6 +308,7 @@ class OCRWindow(object):
             self.image.resize()
             self.binarized.resize()
             self.segmented.resize()
+            self.threshold.resize()
             self.typesetter.resize()
             self.features.resize()
             self.matcher.resize()

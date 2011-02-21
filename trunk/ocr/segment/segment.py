@@ -14,7 +14,9 @@ def visualize(blackAndWhite, characterPieces):
     for row in range(segVisual.height):
         for col in range(segVisual.width):
             segVisual[row, col] = (255,255,255)
-    for box, image in characterPieces:
+    for piece in characterPieces:
+        box = piece[0]
+        image = piece[1]
         for row in range(box[3]):
             for col in range(box[2]):
                 if image[row, col]  < 1:
@@ -38,25 +40,15 @@ def box(points):
     return (minCol-1, minRow-1, maxCol-minCol+2, maxRow-minRow+2)
 
 class ConnectedComponentSegmenter(Segmenter):
-
-    def __init__(self, areaThreshold):
-        self.areaThreshold = areaThreshold
-
     def segment(self, blackAndWhite):
+        output = []
         pixels = set((row,col) for row in range(blackAndWhite.height) for col in range(blackAndWhite.width))
-        output, average = [], 0.0
         while pixels:
             pixel = pixels.pop()
             if blackAndWhite[pixel] == 0:
-                 component = self.findConnectedComponents(blackAndWhite, pixel, pixels)
-                 if component != None:
-                    output.append(component)
-                    average += component[1]
-        average = average/len(output)
-        standardDev = math.sqrt(float(len(output))**-1 * sum([pow(component[1] - average, 2) for component in output]))
-        def formula():
-            return math.sqrt(standardDev * average * math.sqrt(average/standardDev) * pow(self.areaThreshold, 2))
-        return [component[0] for component in output if component[1] > formula()]
+                component = self.findConnectedComponents(blackAndWhite, pixel, pixels)
+                output.append(component)
+        return output
 
     def findConnectedComponents(self, image, pixel, pixels):
         points = set([pixel])
@@ -79,7 +71,7 @@ class ConnectedComponentSegmenter(Segmenter):
                 pixels.remove(point)
         boundingBox = box(points)
         newImage = self.createImage(boundingBox, points)
-        return ((boundingBox, newImage), len(points))
+        return (boundingBox, newImage, len(points))
 
     def createImage(self, boundingBox, points):
         newImage = cv.CreateImage((boundingBox[2], boundingBox[3]), 8, 1)
@@ -109,7 +101,7 @@ class BoundingBoxSegmenter(Segmenter):
             newImage = cv.CreateImage((letter[2], letter[3]+1), 8, 1)
             src_region = cv.GetSubRect(blackAndWhite, (letter[0], letter[1], letter[2], letter[3]+1))
             cv.Copy(src_region, newImage)
-            images.append((letter, newImage))
+            images.append((letter, newImage, letter[2]*letter[3]))
         return images
 
     def inBoundingBox(self, boundingBoxes, point):
@@ -118,7 +110,7 @@ class BoundingBoxSegmenter(Segmenter):
             if point[0] >= box[1] and point[0] <= box[3]+box[1] and point[1] >= box[0] and point[1] <= box[2] + box[0]:
                 return True
         return False
-    
+
     def findBox(self, image, row, col):
         points = set([(row, col)])
         pointsToSearch = [(row, col)]

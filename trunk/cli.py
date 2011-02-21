@@ -33,6 +33,7 @@ def getOptions():
 
     addClassOption('--binarizer', 'binarizer', "Binarizer policy")
     addClassOption('--segmenter', 'segmenter', "Segmentation policy")
+    addClassOption('--threshold', 'threshold', "Thresholding policy")
     addClassOption('--typesetter', 'typesetter', "Typesetting policy")
     addClassOption('--feature-extractor', 'featureExtractor', "Feature extraction policy")
     addClassOption('--scaler', 'scaler', "Scaling policy")
@@ -40,6 +41,7 @@ def getOptions():
 
     addOption('--save-binarized', 'saveBinarized', 'Set this to a path to save the binarized image to a particular location')
     addOption('--save-segmented', 'saveSegmented', 'Set this to a path to save the segmented image to a particular location')    
+    addOption('--save-threshold', 'saveThreshold', 'Set this to a path to save the thresholded image to a particular location')    
     addOption('--save-typeset', 'saveTypeset', 'Set this to a path to save the typeset image to a particular location')
     addOption('--save-features', 'saveFeatures', 'Set this to a path to save the features image to a particular location')
     addOption('--save-matcher', 'saveMatcher', 'Set this to a path to save the matched image to a particular location')
