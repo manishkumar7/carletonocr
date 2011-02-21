@@ -137,7 +137,7 @@ class NGramProgram(object):
                     sys.exit(1)
             s.close()
         self.server = os.spawnv(os.P_NOWAIT, 'ngram', ['ngram', '-server-port', str(self.port), '-lm', 'language-model.txt'])
-        time.sleep(.5)
+        time.sleep(1)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect(('localhost', self.port))
 
@@ -180,11 +180,11 @@ def counted(iterable):
 class WordLinguist(Linguist):
 
     def correctWord(self, characterPossibilities):
-        characterPossibilities = map(lambda lst: sorted(lst, key=lambda c: c[1], reverse=True), characterPossibilities)
+        lines = map(lambda lst: sorted(lst, key=lambda c: c[1], reverse=True), characterPossibilities)
         candidates = []
 
         def extract(candidate):
-            letters, probabilities = zip(*[characterPossibilities[i][c] for (i, c) in counted(candidate)])
+            letters, probabilities = zip(*[lines[i][c] for (i, c) in counted(candidate)])
             string = ''.join(letters)
             wordProbability = self.probability(string)
             if wordProbability is not None:
@@ -202,7 +202,7 @@ class WordLinguist(Linguist):
             nextCandidates = set()
             for candidate in theseCandidates:
                 for i in range(len(candidate)):
-                    if candidate[i] < len(characterPossibilities[i])-1:
+                    if candidate[i] < len(lines[i])-1:
                         newCandidate = list(candidate)
                         newCandidate[i] += 1
                         newCandidate = tuple(newCandidate)
@@ -214,7 +214,8 @@ class WordLinguist(Linguist):
         if candidates:
             return [min(candidates, key=lambda c: c[1])[0]]
         else:
-            return self.backup().correct(characterPossibilities).result()
+            #The following line is a hack
+            return SimpleResult([[self.backup().correctWord(characterPossibilities)]], None).result()
 
 class SpellingLinguist(WordLinguist):
 
