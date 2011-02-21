@@ -6,7 +6,7 @@ def counted(iterable):
 
 class Typesetter(object):
     def typeset(self, characterPieces):
-        return [character[1] for character in characterPieces]
+        return [[[character[1] for character in characterPieces]]]
 
 def splitLines(lines, fn):
     def splitLine(line):
