@@ -7,6 +7,7 @@ import random
 import threading
 import cv
 import time
+import platform
 
 PADDING_WIDTH = 4
 
@@ -50,7 +51,10 @@ class ImagePanel:
 
     def setText(self, text, library):
         filename = name()
-        cv_im = ocr.extract.render("Arial", text, library)
+        if platform.system() == 'Linux':
+            cv_im = ocr.extract.render("arial", text, library)
+        else:
+            cv_im = ocr.extract.render("Arial", text, library)
         cv.SaveImage(filename, cv_im)
         self.reload(filename)
 

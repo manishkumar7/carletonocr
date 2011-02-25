@@ -2,6 +2,7 @@ import cv
 import os
 import binarize, extract, linguistics, match, typeset, segment, threshold
 import copy
+import platform
 
 def eachChar(fn, lines):
     return eachWord(lambda word: map(fn, word), lines)
@@ -126,7 +127,10 @@ class OCRRunner(object):
             linguistOutput = self.linguist.correct(self.voteDict)
             self.output = linguistOutput.result()
             if options.saveLinguist != None:
-                cv.SaveImage(options.saveLinguist, extract.render("Arial", linguistOutput.visualize(), options.library))
+                if platform.system() == "Linux":
+                    cv.SaveImage(options.saveLinguist, extract.render("arial", linguistOutput.visualize(), options.library))
+                else:
+                    cv.SaveImage(options.saveLinguist, extract.render("Arial", linguistOutput.visualize(), options.library))
         self.options = copy.copy(options)
         options.showStatus("Complete")
         return self.output
@@ -188,7 +192,10 @@ defaultOptions.saveMatcher = None
 defaultOptions.saveLinguist = None
 defaultOptions.saveThreshold = None
 defaultOptions.showStatus = lambda status: None
-defaultOptions.library = "/Library/Fonts/"
+if platform.system() == "Darwin":
+    defaultOptions.library = "/Library/Fonts/"
+if platform.system() == "Linux":
+    defaultOptions.library = "/usr/share/fonts/TTF/"
 
 class DependentOption:
     def __init__(self, name, type, parent, parentValues, default, help=None):
