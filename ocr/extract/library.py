@@ -2,8 +2,12 @@ import cv
 import os
 from ocr.typeset import characterCombine
 import Image, ImageFont, ImageDraw, ImageChops
+import platform
 
-fonts = ["Times New Roman", "Arial", "Courier New", "Georgia", "Verdana", "Tahoma"]
+if platform.system() == "Darwin":
+    fonts = ["Times New Roman", "Arial", "Courier New", "Georgia", "Verdana", "Tahoma"]
+if platform.system() == "Linux":
+    fonts = ["times", "arial", "georgia", "verdana", "tahoma"]
 pointSize = 100
 charsToGenerate = map(chr, range(ord('!'), ord('~')+1))
 
