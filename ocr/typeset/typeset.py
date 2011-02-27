@@ -53,14 +53,15 @@ def visualize(lines):
     return typesetVisual
 
 def combineImages(box1, image1, box2, image2):
-    outputBox = (min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[0]+box1[2], box2[0]+box2[2])-min(box1[0], box2[0]), max(box1[1]+box1[3], box2[1]+box2[3])-min(box1[1], box2[1]))
+    outputBox = (min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[0]+box1[2], box2[0]+box2[2])-min(box1[0], box2[0])+1, max(box1[1]+box1[3], box2[1]+box2[3])-min(box1[1], box2[1])+1)
     outputImage = cv.CreateImage((outputBox[2], outputBox[3]), 8, 1)
     cv.Rectangle(outputImage, (0, 0), (outputImage.width, outputImage.height), 255, cv.CV_FILLED)
     for box, image in [(box1, image1), (box2, image2)]:
         offset = (box[0] - outputBox[0], box[1] - outputBox[1])
         for row in range(image.height):
             for col in range(image.width):
-                outputImage[row+offset[1], col+offset[0]] = image[row,col]
+                value = image[row, col]
+                outputImage[row+offset[1], col+offset[0]] = value
     return outputBox, outputImage
 
 def characterCombine(characterPieces):
