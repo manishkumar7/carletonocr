@@ -37,7 +37,12 @@ def box(points):
         if point[1] > maxCol:
             maxCol = point[1]
     #(x,y,width,height)
-    return (minCol-1, minRow-1, maxCol-minCol+2, maxRow-minRow+2)
+    #return (minCol-1, minRow-1, maxCol-minCol+2, maxRow-minRow+2)
+    minCol -= 1
+    minRow -= 1
+    if minCol < 0: minCol += 1
+    if minRow < 0: minRow += 1
+    return (minCol, minRow, maxCol-minCol, maxRow-minRow)
 
 class ConnectedComponentSegmenter(Segmenter):
     def segment(self, blackAndWhite):

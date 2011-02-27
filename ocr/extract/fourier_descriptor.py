@@ -10,6 +10,9 @@ import Image
 
 CENTROID_THRESHOLD = 0
 
+def curveInfo(curve):
+    print 1 
+
 class FourierDescriptor(Features):
     class Curve(object):
         def __init__(self, ordinal, offset, points, fourierPoints, filterLength):
@@ -100,16 +103,17 @@ class FourierDescriptor(Features):
         y = 0
         def minus(loc, val):
             return tuple(coord-val for coord in loc)
-        vis = whiteImage(minus(self.dimension, 4))
+        #vis = whiteImage(minus(self.dimension, 4))
+        vis = whiteImage(self.dimension)
         for curveType, color in zip(self.curves, [(0, 0, 255), (0, 255, 0)]):
             for curve in curveType:
                 centroid = tuple(map(operator.add, self.difference, curve.offset))
                 cv.Circle(vis, minus(centroid, 2), 3, color, 1)
-                invX = numpy.fft.ifft(curve.pad(curve.fourierX)) - centroid[0]
-                invY = numpy.fft.ifft(curve.pad(curve.fourierY)) - centroid[1]
+                invX = (numpy.rot90(numpy.fft.ifft(curve.fourierX)) - curve.offset[0])/2
+                invY = (numpy.rot90(numpy.fft.ifft(curve.fourierY)) - curve.offset[1])/2
                 for coord in zip(invX, invY):
-                    coord = tuple(int(abs(x))-2 for x in coord)
-                    vis[coord] = map(lambda x: x/2, color)
+                    #coord = tuple(int(abs(x))-2 for x in coord)
+                    vis[coord] = map(lambda x: x, color)
         return vis 
 
 def partition(list, predicate):

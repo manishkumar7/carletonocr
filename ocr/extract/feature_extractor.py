@@ -34,8 +34,8 @@ def visualize(lines, features):
         for chrWord, featureWord in zip(chrLine, featureLine):
             for chr, feature in zip(chrWord, featureWord):
                 curVis = feature.visualize()
-                assert charHeight == curVis.height == chr.height
-                assert charWidth == curVis.width == chr.width
+                #assert charHeight == curVis.height == chr.height
+                #assert charWidth == curVis.width == chr.width
                 for row in range(charHeight):
                     for col in range(charWidth):
                         featuresVisual[y+row, x+col] = curVis[row, col]
