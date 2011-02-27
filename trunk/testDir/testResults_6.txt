@@ -1,0 +1,56 @@
+ACTUAL TEXT:
+There are people
+here in this room.
+Go find them.
+BEST GUESS:
+There are people
+here in th!& room.
+so f'nd them.
+FEATURE EXTRACTOR: histogram
+LINGUIST: spelling
+LETTERS IDENTIFIED: 47
+PERCENT LETTERS IDENTIFIED: 95.9183673469
+EDIT DISTANCE: 8
+
+ACTUAL TEXT:
+There are people
+here in this room.
+Go find them.
+BEST GUESS:
+There are peopIs
+here in th!s rooma
+oo f'nd thema
+FEATURE EXTRACTOR: histogram
+LINGUIST: n-gram
+LETTERS IDENTIFIED: 44
+PERCENT LETTERS IDENTIFIED: 89.7959183673
+EDIT DISTANCE: 14
+
+ACTUAL TEXT:
+There are people
+here in this room.
+Go find them.
+BEST GUESS:
+There are poor!e
+here in this room.
+Go find them.
+FEATURE EXTRACTOR: template
+LINGUIST: spelling
+LETTERS IDENTIFIED: 48
+PERCENT LETTERS IDENTIFIED: 97.9591836735
+EDIT DISTANCE: 6
+
+ACTUAL TEXT:
+There are people
+here in this room.
+Go find them.
+BEST GUESS:
+There are peopie
+here jn this roomn
+co flnd themn
+FEATURE EXTRACTOR: template
+LINGUIST: n-gram
+LETTERS IDENTIFIED: 45
+PERCENT LETTERS IDENTIFIED: 91.8367346939
+EDIT DISTANCE: 12
+
