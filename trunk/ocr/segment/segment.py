@@ -21,7 +21,7 @@ def visualize(blackAndWhite, characterPieces):
             for col in range(box[2]):
                 if image[row, col]  < 1:
                     segVisual[box[1]+row, box[0]+col] = (0,0,0)
-        cv.Rectangle(segVisual, (box[0],box[1]), (box[0]+box[2],box[1]+box[3]), cv.RGB(0, 200, 0), 1, 8)        
+        cv.Rectangle(segVisual, (box[0]-1,box[1]-1), (box[0]+box[2],box[1]+box[3]), cv.RGB(0, 200, 0), 1, 8)        
     return segVisual
 
 def box(points):
@@ -37,12 +37,7 @@ def box(points):
         if point[1] > maxCol:
             maxCol = point[1]
     #(x,y,width,height)
-    #return (minCol-1, minRow-1, maxCol-minCol+2, maxRow-minRow+2)
-    minCol -= 1
-    minRow -= 1
-    if minCol < 0: minCol += 1
-    if minRow < 0: minRow += 1
-    return (minCol, minRow, maxCol-minCol, maxRow-minRow)
+    return (minCol, minRow, maxCol-minCol+1, maxRow-minRow+1)
 
 class ConnectedComponentSegmenter(Segmenter):
     def segment(self, blackAndWhite):
