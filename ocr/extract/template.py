@@ -24,14 +24,14 @@ class FormulaImage(Features):
              return numpy.sum(numpy.bitwise_and(maybe(self, a), maybe(other, b)))
         return self.formula(count(0, 0), count(0, 1), count(1, 0), count(1, 1))
 
+class TemplateImage(FormulaImage):
+    def makeArray(self, image):
+        return numpyOfImage(image)
+
     def visualize(self):
         vis = cv.CreateImage((self.image.width, self.image.height), 8, 3)
         cv.CvtColor(self.image, vis, cv.CV_GRAY2RGB)
         return vis
-
-class TemplateImage(FormulaImage):
-    def makeArray(self, image):
-        return numpyOfImage(image)
 
 def oldFormula(n00, n01, n10, n11):
     return (n00 + n11)/float(n11 + n00 + n10 + n01)
@@ -64,6 +64,13 @@ class DiagonalTemplateImage(FormulaImage):
             if pixel > 0:
                 array[i] = True
         return array
+
+    def visualize(self):
+        vis = whiteImage((self.image.width, self.image.height))
+        for i, pixel in counted(self.array):
+           color = (255, 150, 255) if pixel else (0, 0, 0)
+           vis[i, i] = color
+        return vis
 
 class DiagonalTemplateImageOldFormula(DiagonalTemplateImage):
     def formula(self, *n):
