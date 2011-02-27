@@ -286,6 +286,7 @@ class OCRWindow(object):
         self.redrawPictures()
 
     def doFlapWings(self):
+        os.system("/usr/bin/afplay hoot.mp3&")
         sem = threading.Semaphore()
         period = 1.0
         while self.flapWings:
