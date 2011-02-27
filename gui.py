@@ -11,10 +11,10 @@ import platform
 
 PADDING_WIDTH = 4
 
-OWL = "leek1.png"
-OWL_MID = "leek2.png"
-OWL_HIGH = "leek3.png"
-OWL_DOWN = "leek1.png"
+OWL = "lemmling_Cartoon_owl1.png"
+OWL_MID = "lemmling_Cartoon_owl2.png"
+OWL_HIGH = "lemmling_Cartoon_owl3.png"
+OWL_DOWN = "lemmling_Cartoon_owl_depressed.png"
 
 def name():
     return '/tmp/'+str(random.randint(1000, 1000000))+'.png'
@@ -211,7 +211,7 @@ class OCRWindow(object):
         self.app.Bind(wx.EVT_LEFT_DOWN, depress, self.owl.bitmap)
         def doUpdate(*args):
             self.owl.reload(OWL)
-            #self.owl.resize()
+            self.owl.resize()
             self.update()
         self.app.Bind(wx.EVT_LEFT_UP, doUpdate, self.owl.bitmap)
         self.owl.reload(OWL) 
