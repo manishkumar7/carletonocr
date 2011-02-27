@@ -143,6 +143,8 @@ classMap = {
     'featureExtractor': {
         'template': extract.TemplateComparisonNewFormula,
         'template-old': extract.TemplateComparisonOldFormula,
+        'diagonal-template': extract.DiagonalTemplateComparisonNewFormula,
+        'diagonal-template-old': extract.DiagonalTemplateComparisonOldFormula,
         'histogram': extract.HistogramComparison,
         'vertical-histogram': extract.VerticalHistogramComparison,
         'horizontal-histogram': extract.HorizontalHistogramComparison,
