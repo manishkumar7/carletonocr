@@ -7,8 +7,7 @@ import platform
 if platform.system() == "Darwin":
     fonts = ["Times New Roman", "Arial", "Courier New", "Georgia", "Verdana", "Tahoma"]
 if platform.system() == "Linux":
-    #fonts = ["times", "arial", "georgia", "verdana", "tahoma"]
-    fonts = ["times",] 
+    fonts = ["times", "arial", "georgia", "verdana", "tahoma"]
 pointSize = 100
 charsToGenerate = map(chr, range(ord('!'), ord('~')+1))
 
