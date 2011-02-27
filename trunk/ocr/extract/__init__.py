@@ -1,6 +1,6 @@
 from library import buildLibrary, render
 from scaler import Scaler, ProportionalScaler
 from feature_extractor import FeatureExtractor, Features, visualize
-from template import TemplateComparisonOldFormula, TemplateComparisonNewFormula
+from template import TemplateComparisonOldFormula, TemplateComparisonNewFormula, DiagonalTemplateComparisonOldFormula, DiagonalTemplateComparisonNewFormula
 from histogram import VerticalHistogramComparison, HorizontalHistogramComparison, HistogramComparison
 from fourier_descriptor import FourierComparison
