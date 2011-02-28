@@ -17,8 +17,8 @@ class FourierDescriptor(Features):
             self.offset = offset
             self.fourierPoints = fourierPoints
             self.filterLength = filterLength
-            self.fourierX = self.fourier(points, 0)
-            self.fourierY = self.fourier(points, 1)
+            self.fourierX, self.fourierXvis = self.fourier(points, 0)
+            self.fourierY, self.fourierYvis = self.fourier(points, 1)
             self.numPoints = len(points)
 
         def fourier(self, points, coordinate):
@@ -35,7 +35,8 @@ class FourierDescriptor(Features):
                 else:
                     return int(points[before]*(index - before) + points[after]*(after - index))
             interpolated = [interpolate(i) for i in range(self.fourierPoints)]
-            return numpy.fft.fft(interpolated)[:self.filterLength]
+            transformed = numpy.fft.fft(interpolated)[:self.filterLength]
+            return map(abs, transformed), transformed
 
         def pad(self, lst):
             return list(lst) + [0]*(self.numPoints - len(lst))
@@ -105,11 +106,14 @@ class FourierDescriptor(Features):
             for curve in curveType:
                 centroid = tuple(map(operator.add, self.difference, curve.offset))
                 cv.Circle(vis, minus(centroid, 2), 3, color, 1)
-                invX = (numpy.fft.ifft(curve.fourierX) - curve.offset[0])/2
-                invY = (numpy.fft.ifft(curve.fourierY) - curve.offset[1])/2
-                for coord in zip(invX, invY):
+                invX = (numpy.fft.ifft(curve.fourierXvis) - curve.offset[0])/2
+                invY = (numpy.fft.ifft(curve.fourierYvis) - curve.offset[1])/2
+                for coord in zip(invY, invX):
                     #coord = tuple(int(abs(x))-2 for x in coord)
                     vis[coord] = map(lambda x: x, color)
+                    invY = map(int, invY)
+                    invX = map(int, invX)
+                    cv.PolyLine(vis, [zip(invX, invY)], True, (255,0,0))
         return vis 
 
 def partition(list, predicate):
