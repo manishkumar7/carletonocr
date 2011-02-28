@@ -80,10 +80,11 @@ class LinearTypesetter(Typesetter):
     def bestPieceBy(self, pieces, utility):
         bestPiece = None
         bestUtility = None
+        print pieces
         for piece in pieces:
             if bestPiece == None:
                 myUtility = utility(piece)
-                if myUtility != False:
+                if myUtility is not False:
                     bestPiece = piece
                     bestUtility = myUtility
             else:
