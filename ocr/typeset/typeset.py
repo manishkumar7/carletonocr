@@ -83,7 +83,7 @@ class LinearTypesetter(Typesetter):
         for piece in pieces:
             if bestPiece == None:
                 myUtility = utility(piece)
-                if myUtility:
+                if myUtility != False:
                     bestPiece = piece
                     bestUtility = myUtility
             else:
@@ -93,7 +93,6 @@ class LinearTypesetter(Typesetter):
                     bestUtility = myUtility
         if bestPiece != None:
             pieces.remove(bestPiece)
-        if bestPiece == None and len(pieces) == 1: return pieces.pop()
         return bestPiece
 
     def findFirstPiece(self, pieces):
