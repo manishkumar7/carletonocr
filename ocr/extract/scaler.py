@@ -1,4 +1,4 @@
-import cv
+import cv, time
 from ocr.binarize import SimpleBinarizer
 
 class Scaler(object):

@@ -68,12 +68,13 @@ class LocalBinarizer(Binarizer):
                 for col in range(threshold.width):
                     if threshold[row,col] == 255:
                         numWhitePixels += 1
-            if numWhitePixels >= bestPixels:
-                if numWhitePixels == im.width*im.height: #This is a huge hack and should be fixed
+            if numWhitePixels >= bestPixels or im.width*im.height - numWhitePixels >= bestPixels:
+                if numWhitePixels == im.width*im.height or numWhitePixels == 0: #This is a huge hack and should be fixed
                     cv.Copy(channel, threshold)
                     if bestThreshold == None:
                         bestThreshold = threshold
                 else:
+                    if numWhitePixels < bestPixels: cv.Invert(threshold, threshold)
                     bestPixels = numWhitePixels
                     #print bSize, "assigning threshold"
                     bestThreshold = threshold
