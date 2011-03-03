@@ -1,6 +1,7 @@
 import cv
 import heapq
 import math
+import multiprocessing
 
 class Matcher(object):
     def __init__(self, library, k):
