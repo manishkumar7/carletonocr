@@ -107,14 +107,14 @@ class FourierDescriptor(Features):
             for curve in curveType:
                 centroid = tuple(map(operator.add, self.difference, curve.offset))
                 cv.Circle(vis, minus(centroid, 2), 3, color, 1)
-                invX = (numpy.fft.ifft(curve.fourierXvis) - curve.offset[0])/2
-                invY = (numpy.fft.ifft(curve.fourierYvis) - curve.offset[1])/2
+                invX = (numpy.fft.ifft(curve.fourierXvis) - centroid[0])
+                invY = (numpy.fft.ifft(curve.fourierYvis) - centroid[1]-2)
                 invY = map(int, invY)
                 invX = map(int, invX)
                 for coord in zip(invY, invX):
                     #coord = tuple(int(abs(x))-2 for x in coord)
-                    vis[coord] = map(lambda x: x, color)
-                    cv.PolyLine(vis, [zip(invX, invY)], True, (255,0,0))
+                    #vis[coord] = map(lambda x: x, color)
+                    cv.PolyLine(vis, [zip(invX, invY)], True, color)
         return vis 
 
 def partition(list, predicate):
