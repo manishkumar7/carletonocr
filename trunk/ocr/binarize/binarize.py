@@ -5,6 +5,8 @@ class Binarizer:
     #Future subclasses:
     #Thresholding (how do we get the threshold?)
     #Locally adaptive binarization
+    def __init__(self, offset):
+        self.offset = offset
     def binarize(self, image):
         '''Given an image, return a black and white image'''
         #Potential pain point in the future:
@@ -12,6 +14,11 @@ class Binarizer:
         return image
 
 class SimpleBinarizer(Binarizer):
+
+    def __init__(self, offset):
+        Binarizer.__init__(self, offset)
+        
+        
     def binarize(self, im):
         '''Given an image, return a black and white image. Uses OPenCV's 
         adaptive thresholding with blockSize as large as possible'''
@@ -44,7 +51,8 @@ class SimpleBinarizer(Binarizer):
         return blockSize
 
 class LocalBinarizer(Binarizer):
-    def __init__(self, proportion):
+    def __init__(self, offset, proportion):
+        Binarizer.__init__(self, offset)
         self.proportion = proportion
 
     def binarize(self, im):
@@ -60,7 +68,7 @@ class LocalBinarizer(Binarizer):
         channels = self.formatImage(im)
         thresh = [cv.CreateImage((im.width, im.height), 8, 1) for i in range(len(channels))]
         for (threshold, channel) in zip(thresh, channels):
-            cv.AdaptiveThreshold(channel, threshold, maxVal, adaptive_method=cv.CV_ADAPTIVE_THRESH_GAUSSIAN_C, blockSize=bSize, param1=1)
+            cv.AdaptiveThreshold(channel, threshold, maxVal, adaptive_method=cv.CV_ADAPTIVE_THRESH_GAUSSIAN_C, blockSize=bSize, param1=1+self.offset)
         if len(thresh) == 1:
             return thresh[0]
         for (threshold, channel) in zip(thresh, channels):
