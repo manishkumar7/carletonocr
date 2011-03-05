@@ -196,6 +196,7 @@ class OCRWindow(object):
         self.chooseFile(frame, sizer, "target", "No file loaded", "Choose file", callback=updateFile)
         self.entry(frame, sizer, 'Internal dimension of characters', 'dimension', int)
         self.dropdown(frame, sizer, 'Binarizer', 'binarizer')
+        self.entry(frame, sizer, 'Offset', 'offset', int)
         self.dropdown(frame, sizer, 'Segmenter', 'segmenter')
         self.dropdown(frame, sizer, 'Threshold', 'threshold')
         self.dropdown(frame, sizer, 'Typesetter', 'typesetter')

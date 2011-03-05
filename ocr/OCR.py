@@ -23,10 +23,10 @@ class OCRRunner(object):
         if targetChanged:
             options.showStatus("Loading image")
             self.image = cv.LoadImage(options.target, cv.CV_LOAD_IMAGE_COLOR)
-        binarizerChanged = self.varChanged('binarizer', options)
+        binarizerChanged = self.varChanged('binarizer', options) or self.varChanged('offset', options)
         if binarizerChanged:
             options.showStatus("Initializing binarizer")
-            self.binarizer = options.get('binarizer')
+            self.binarizer = options.get('binarizer', options.offset)
         redoBinarizeImage = targetChanged or binarizerChanged
         if redoBinarizeImage:
             options.showStatus("Binarizing image")
@@ -73,7 +73,7 @@ class OCRRunner(object):
         redoScale = scalerChanged or redoTypeset
         if redoScale:
             options.showStatus("Scaling image")
-            bin = binarize.SimpleBinarizer()
+            bin = binarize.SimpleBinarizer(0)
             def scaleAndRebinarize(image):
                 return bin.binarize(self.scaler.scale(image))
             self.scaled = eachChar(scaleAndRebinarize, self.pieces)
@@ -99,7 +99,7 @@ class OCRRunner(object):
         redoLibraryBinarize = redoLibraryScale or binarizerChanged
         if redoLibraryBinarize:
             options.showStatus("Binarizing library")
-            self.binScaleLibrary = [(char, self.binarizer.binarize(im)) for (char, im) in self.scaledLibrary]
+            self.binScaleLibrary = [(char, bin.binarize(im)) for (char, im) in self.scaledLibrary]
         #Maybe here use the typesetter? The segmenter? to preprocess the library
         redoLibraryFeatureExtract = redoLibraryBinarize or featureExtractorChanged
         if redoLibraryFeatureExtract:
@@ -193,6 +193,7 @@ defaultOptions.saveFeatures = None
 defaultOptions.saveMatcher = None
 defaultOptions.saveLinguist = None
 defaultOptions.saveThreshold = None
+defaultOptions.offset = 0
 defaultOptions.showStatus = lambda status: None
 if platform.system() == "Darwin":
     defaultOptions.library = "/Library/Fonts/"

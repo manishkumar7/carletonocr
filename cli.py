@@ -30,6 +30,7 @@ def getOptions():
     addOption('--dimension', 'dimension', type='int', help="Dimension of square scaled image within the template matcher")
     addOption('-k', 'k', type='int', help="How many templates should vote on which character is chosen. k=1 means the single most similar template determines the character.")
     addOption('--linguist-weight', 'selfImportance', type='float', help="How much weight should the linguistic correction be given?")
+    addOption('--offset', 'offset', type='int', help="Offset for the binarizer")
 
     addClassOption('--binarizer', 'binarizer', "Binarizer policy")
     addClassOption('--segmenter', 'segmenter', "Segmentation policy")
