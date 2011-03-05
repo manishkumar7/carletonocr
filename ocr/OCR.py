@@ -137,7 +137,7 @@ class OCRRunner(object):
 
 
 classMap = {
-    'binarizer': {'simple': binarize.SimpleBinarizer, 'adaptive': binarize.LocalBinarizer},
+    'binarizer': {'global': binarize.SimpleBinarizer, 'local': binarize.LocalBinarizer},
     'segmenter': {'connected-component': segment.ConnectedComponentSegmenter, 'bounding-box': segment.BoundingBoxSegmenter},
     'typesetter': {'null': typeset.Typesetter, 'linear': typeset.LinearTypesetter},
     'featureExtractor': {
@@ -178,7 +178,7 @@ defaultOptions = Options()
 defaultOptions.spaceWidth = .4
 defaultOptions.dimension = 50
 defaultOptions.k = 10
-defaultOptions.binarizer = 'adaptive'
+defaultOptions.binarizer = 'local'
 defaultOptions.segmenter = 'connected-component'
 defaultOptions.typesetter = 'linear'
 defaultOptions.featureExtractor = 'template'
