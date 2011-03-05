@@ -74,7 +74,11 @@ class LocalBinarizer(Binarizer):
                     if bestThreshold == None:
                         bestThreshold = threshold
                 else:
-                    if numWhitePixels < bestPixels: cv.Invert(threshold, threshold)
+                    if im.width*im.height - numWhitePixels >= bestPixels:
+                        newThreshold = cv.CreateImage((im.width, im.height), 8, 1)
+                        cv.Not(threshold, newThreshold)
+                        print "inverting"
+                        threshold = newThreshold
                     bestPixels = numWhitePixels
                     #print bSize, "assigning threshold"
                     bestThreshold = threshold
