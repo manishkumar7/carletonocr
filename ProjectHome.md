@@ -1,0 +1,1 @@
+Code repository for the Carleton OCR comps project 2010-2011
